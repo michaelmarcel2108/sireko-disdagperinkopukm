@@ -231,18 +231,10 @@ export default function KeragaanKoperasi() {
   if (loading) return <div className="min-h-screen bg-white p-8 text-center text-slate-900 font-bold">Memuat data asli dari server...</div>
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-12 font-sans antialiased text-slate-900">
+    <div className="min-h-screen bg-white pb-12 font-sans antialiased text-slate-900">
       <Toaster position="top-center" />
 
-      {/* HEADER HALAMAN */}
-      <div className="bg-white border-b border-slate-200 py-4 px-6 mb-8 shadow-sm sticky top-0 z-40">
-        <div className="max-w-5xl mx-auto flex justify-between items-center">
-          <h1 className="text-xl font-bold text-slate-900">Modul Keragaan Koperasi</h1>
-          <button onClick={() => router.push('/koperasi/dashboard')} className="text-sm font-semibold text-indigo-700 hover:underline">Kembali ke Dashboard</button>
-        </div>
-      </div>
-
-      <div className="max-w-5xl mx-auto px-4 space-y-8">
+      <div className="max-w-5xl mx-auto px-4 space-y-8 pt-8">
 
         {/* 1. DATA TERAKHIR & INPUT MANUAL (DIPERJELAS) */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">

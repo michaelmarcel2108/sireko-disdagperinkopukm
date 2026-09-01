@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   description: "Sistem Informasi Regulasi & Kesehatan Koperasi",
 };
 
+import { Toaster } from 'react-hot-toast';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -17,7 +19,10 @@ export default function RootLayout({
   return (
     // Tambahkan suppressHydrationWarning di sini
     <html lang="en" suppressHydrationWarning> 
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <Toaster position="top-right" />
+        {children}
+      </body>
     </html>
   );
 }

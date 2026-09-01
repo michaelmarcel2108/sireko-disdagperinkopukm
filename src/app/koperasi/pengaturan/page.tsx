@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/utils/supabase'
-import NavbarKoperasi from '@/components/NavbarKoperasi'
 
 export default function PengaturanAkun() {
   const router = useRouter()
@@ -113,10 +112,9 @@ export default function PengaturanAkun() {
   if (loading) return <div className="min-h-screen bg-slate-50 p-8 text-center text-slate-900 font-bold">Memuat Pengaturan...</div>
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans antialiased text-slate-900">
-      <NavbarKoperasi />
-
-      <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+    <div className="min-h-screen bg-slate-50">
+      
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Pengaturan Akun & Profil</h1>
           <p className="text-sm text-slate-500 mt-1">Perbarui Nama Koperasi, ID Login (Email), dan Password Anda di sini.</p>

@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/utils/supabase'
 
+import NavbarAdmin from '@/components/NavbarAdmin'
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const [isAuthorized, setIsAuthorized] = useState(false)
@@ -43,5 +45,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     )
   }
 
-  return <>{children}</>
+  return (
+    <>
+      <NavbarAdmin />
+      {children}
+    </>
+  )
 }

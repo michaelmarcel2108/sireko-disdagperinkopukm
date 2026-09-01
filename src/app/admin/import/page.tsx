@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/utils/supabase'
 import Papa from 'papaparse'
+import toast from 'react-hot-toast'
 
 export default function AdminImportPage() {
   const router = useRouter()
@@ -25,7 +26,10 @@ export default function AdminImportPage() {
   }
 
   const handleProcessImport = async () => {
-    if (!file) return alert('Silakan pilih file CSV terlebih dahulu!')
+    if (!file) {
+      toast.error('Silakan pilih file CSV terlebih dahulu!')
+      return
+    }
 
     setIsProcessing(true)
     addLog('Mengecek data slug di database untuk mencegah duplikat...')

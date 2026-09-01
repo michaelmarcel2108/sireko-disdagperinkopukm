@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/utils/supabase'
 import NavbarAdmin from '@/components/NavbarAdmin'
+import toast from 'react-hot-toast'
 
 export default function AdminDetailKoperasi() {
   const router = useRouter()
@@ -14,6 +15,7 @@ export default function AdminDetailKoperasi() {
   const [keragaanList, setKeragaanList] = useState<any[]>([])
   const [kesehatanList, setKesehatanList] = useState<any[]>([])
   const [verifData, setVerifData] = useState<any>(null)
+  const [metrikData, setMetrikData] = useState<any>(null)
 
   // State Form Verifikasi
   const [statusVerif, setStatusVerif] = useState('menunggu')
@@ -46,6 +48,10 @@ export default function AdminDetailKoperasi() {
         setCatatan(vData.catatan || '')
       }
 
+      // 4. Ambil Data Metrik Keragaan Lengkap
+      const { data: mData } = await supabase.from('data_keragaan_metrik').select('*').eq('slug', slug).single()
+      if (mData) setMetrikData(mData)
+
     } catch (err) {
       console.error(err)
     } finally {
@@ -73,41 +79,42 @@ export default function AdminDetailKoperasi() {
       }
 
       // Simpan ke tabel verifikasi_dinas
-      const { error: dbError } = await supabase.from('verifikasi_dinas').insert({
+      const { error } = await supabase.from('verifikasi_dinas').insert({
         koperasi_id: profil.id,
         status: statusVerif,
         catatan: catatan,
         surat_verifikasi_url: publicUrl
       })
 
-      if (dbError) throw new Error("Gagal menyimpan data verifikasi: " + dbError.message)
-
-      alert('Keputusan Dinas dan Surat Verifikasi berhasil disimpan!')
+      if (error) throw error
+      toast.success('Keputusan Dinas dan Surat Verifikasi berhasil disimpan!')
       setSuratFile(null)
       fetchKoperasiDetail(profil.slug) // Refresh data
 
     } catch (err: any) {
-      alert(err.message)
+      toast.error(err.message)
     } finally {
       setIsSubmitting(false)
     }
   }
 
   const updateStatusDokumen = async (tabel: string, id: string, statusBaru: string) => {
-    const { error } = await supabase.from(tabel).update({ status_indikator: statusBaru }).eq('id', id)
-    if (!error) {
-      alert("Status dokumen diperbarui!")
+    try {
+      const { error } = await supabase.from(tabel).update({ status_indikator: statusBaru }).eq('id', id)
+      if (error) throw error
+      toast.success("Status dokumen diperbarui!")
       fetchKoperasiDetail(profil.slug)
+    } catch (err: any) {
+      toast.error("Gagal memperbarui status: " + err.message)
     }
   }
 
   if (loading) return <div className="min-h-screen bg-slate-50 p-8 text-center font-bold">Memuat Detail Koperasi...</div>
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans antialiased text-slate-900 pb-12">
-      <NavbarAdmin />
-
-      <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+    <div className="min-h-screen bg-slate-50 font-sans antialiased text-slate-900">
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         
         {/* HEADER PROFIL */}
         <div className="flex justify-between items-center mb-6">
@@ -123,6 +130,50 @@ export default function AdminDetailKoperasi() {
           {/* KOLOM KIRI: DAFTAR DOKUMEN KOPERASI */}
           <div className="lg:col-span-2 space-y-6">
             
+            {/* Data Lengkap Keragaan */}
+            {metrikData && (
+              <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+                <h2 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2">Data Metrik Keragaan (Tahun {metrikData.tahun_laporan})</h2>
+                
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <p className="text-xs text-slate-500 font-medium">Total Anggota</p>
+                    <p className="text-lg font-black text-indigo-700">{metrikData.ang_laki + metrikData.ang_wanita}</p>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <p className="text-xs text-slate-500 font-medium">Total Karyawan</p>
+                    <p className="text-lg font-black text-indigo-700">{metrikData.kary_laki + metrikData.kary_wanita}</p>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <p className="text-xs text-slate-500 font-medium">Total Manajer</p>
+                    <p className="text-lg font-black text-indigo-700">{metrikData.mgr_laki + metrikData.mgr_wanita}</p>
+                  </div>
+                  
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <p className="text-xs text-slate-500 font-medium">Total Aset</p>
+                    <p className="text-base font-bold text-slate-800">Rp {metrikData.asset?.toLocaleString('id-ID')}</p>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <p className="text-xs text-slate-500 font-medium">Volume Usaha</p>
+                    <p className="text-base font-bold text-slate-800">Rp {metrikData.volusaha?.toLocaleString('id-ID')}</p>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <p className="text-xs text-slate-500 font-medium">SHU</p>
+                    <p className="text-base font-bold text-emerald-600">Rp {metrikData.shu?.toLocaleString('id-ID')}</p>
+                  </div>
+
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <p className="text-xs text-slate-500 font-medium">Modal Sendiri</p>
+                    <p className="text-base font-bold text-slate-800">Rp {metrikData.modalsendiri?.toLocaleString('id-ID')}</p>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <p className="text-xs text-slate-500 font-medium">Modal Luar</p>
+                    <p className="text-base font-bold text-slate-800">Rp {metrikData.modalluar?.toLocaleString('id-ID')}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Dokumen Keragaan */}
             <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
               <h2 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2">Laporan Keragaan (CSV/Metrik)</h2>
@@ -140,9 +191,9 @@ export default function AdminDetailKoperasi() {
                         onChange={(e) => updateStatusDokumen('dokumen_keragaan', doc.id, e.target.value)}
                         className="text-xs border border-slate-300 rounded p-1 font-bold bg-white"
                       >
-                        <option value="merah">Merah (Belum)</option>
-                        <option value="biru">Biru (Proses)</option>
-                        <option value="hijau">Hijau (Aman)</option>
+                        <option value="merah">Belum Dicek</option>
+                        <option value="biru">Diproses</option>
+                        <option value="hijau">Terverifikasi</option>
                       </select>
                     </div>
                   </div>
@@ -168,9 +219,9 @@ export default function AdminDetailKoperasi() {
                         onChange={(e) => updateStatusDokumen('dokumen_kesehatan', doc.id, e.target.value)}
                         className="text-xs border border-slate-300 rounded p-1 font-bold bg-white"
                       >
-                        <option value="merah">Merah (Belum)</option>
-                        <option value="biru">Biru (Proses)</option>
-                        <option value="hijau">Hijau (Aman)</option>
+                        <option value="merah">Belum Dicek</option>
+                        <option value="biru">Diproses</option>
+                        <option value="hijau">Terverifikasi</option>
                       </select>
                     </div>
                   </div>

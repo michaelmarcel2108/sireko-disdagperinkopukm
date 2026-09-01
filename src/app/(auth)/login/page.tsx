@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/utils/supabase'
+import toast from 'react-hot-toast'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -28,19 +29,19 @@ export default function LoginPage() {
       console.log("🔥 CEK ROLE:", role) // Muncul di Inspect Element -> Console
 
       if (role === 'admin') {
-        alert('Login berhasil sebagai Admin!')
+        toast.success('Login berhasil sebagai Admin!')
         router.push('/admin/dashboard')
       } else if (role === 'koperasi') {
-        alert('Login berhasil sebagai Koperasi!')
+        toast.success('Login berhasil sebagai Koperasi!')
         router.push('/koperasi/dashboard')
       } else {
         // JIKA ROLE KOSONG ATAU SALAH, MUNCULKAN ALERT INI
-        alert(`❌ Akses Ditolak!\nSistem membaca role kamu sebagai: "${role}"\nHarusnya "koperasi" atau "admin".`)
+        toast.error(`Akses Ditolak!\nSistem membaca role kamu sebagai: "${role}"\nHarusnya "koperasi" atau "admin".`)
         await supabase.auth.signOut()
       }
       
     } catch (error: any) {
-      alert('Gagal Login: ' + error.message)
+      toast.error('Gagal Login: ' + error.message)
     } finally {
       setIsLoading(false)
     }
@@ -50,6 +51,9 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-md border border-gray-100">
         <div>
+          <div className="flex justify-center mb-6">
+            <img src="/logo.png" alt="Logo SIREKO" className="h-16 w-auto object-contain" />
+          </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Masuk ke SIREKO
           </h2>

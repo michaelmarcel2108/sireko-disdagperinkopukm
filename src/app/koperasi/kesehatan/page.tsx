@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/utils/supabase'
+import toast from 'react-hot-toast'
 
 export default function KesehatanKoperasi() {
   const router = useRouter()
@@ -63,8 +64,8 @@ export default function KesehatanKoperasi() {
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!file || !profil) {
-      alert("Pilih file PDF terlebih dahulu!")
+    if (!file) {
+      toast.error("Pilih file PDF terlebih dahulu!")
       return
     }
     
@@ -84,7 +85,7 @@ export default function KesehatanKoperasi() {
       const { data: publicUrlData } = supabase.storage.from('berkas_sireko').getPublicUrl(`kesehatan/${fileName}`)
       
       // 3. Masukkan ke Database dengan jenis dokumen spesifik
-      const { error: dbError } = await supabase.from('dokumen_kesehatan').insert({ 
+      const { error: insertError } = await supabase.from('dokumen_kesehatan').insert({ 
         koperasi_id: profil.id, 
         jenis_dokumen: jenisDokumen, 
         tanggal_input: tanggalInput,
@@ -92,14 +93,14 @@ export default function KesehatanKoperasi() {
         status_indikator: 'merah' 
       })
 
-      if (dbError) throw new Error("Gagal menyimpan data ke database: " + dbError.message)
+      if (insertError) throw insertError
 
-      alert('Dokumen Kesehatan berhasil diunggah!')
+      toast.success('Dokumen Kesehatan berhasil diunggah!')
       setFile(null)
       fetchDokumen(profil.id)
     } catch (error: any) { 
       console.error("CRITICAL ERROR:", error)
-      alert(error.message) 
+      toast.error(error.message) 
     } finally { 
       setIsUploading(false) 
     }
@@ -128,15 +129,7 @@ export default function KesehatanKoperasi() {
 
   return (
     <div className="min-h-screen bg-white pb-12 font-sans antialiased text-slate-900">
-      {/* HEADER NAVBAR */}
-      <div className="bg-white border-b border-slate-200 py-4 px-6 mb-8 shadow-sm">
-        <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <h1 className="text-xl font-bold text-slate-900">Modul Kesehatan Koperasi</h1>
-          <button onClick={() => router.push('/koperasi/dashboard')} className="text-sm font-semibold text-indigo-700 hover:underline">Kembali</button>
-        </div>
-      </div>
-
-      <div className="max-w-4xl mx-auto px-4 space-y-8">
+      <div className="max-w-4xl mx-auto px-4 space-y-8 pt-8">
         
         {/* 1. PANEL STATUS KESEHATAN UMUM */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -145,9 +138,9 @@ export default function KesehatanKoperasi() {
             <p className="text-sm text-slate-700 font-medium">Ini adalah status gabungan dari semua dokumen kesehatan yang Anda unggah.</p>
           </div>
           <div className="flex-shrink-0">
-            {statusUmum === 'merah' && <span className="px-4 py-2 bg-red-100 text-red-800 border border-red-200 rounded-lg font-bold shadow-sm">BUTUH PERHATIAN (MERAH)</span>}
-            {statusUmum === 'biru' && <span className="px-4 py-2 bg-blue-100 text-blue-800 border border-blue-200 rounded-lg font-bold shadow-sm">DALAM PROSES (BIRU)</span>}
-            {statusUmum === 'hijau' && <span className="px-4 py-2 bg-green-100 text-green-800 border border-green-200 rounded-lg font-bold shadow-sm">SEHAT / TERVERIFIKASI (HIJAU)</span>}
+            {statusUmum === 'merah' && <span className="px-4 py-2 bg-red-100 text-red-800 border border-red-200 rounded-lg font-bold shadow-sm">Belum Dicek</span>}
+            {statusUmum === 'biru' && <span className="px-4 py-2 bg-blue-100 text-blue-800 border border-blue-200 rounded-lg font-bold shadow-sm">Diproses</span>}
+            {statusUmum === 'hijau' && <span className="px-4 py-2 bg-green-100 text-green-800 border border-green-200 rounded-lg font-bold shadow-sm">Terverifikasi</span>}
           </div>
         </div>
 
