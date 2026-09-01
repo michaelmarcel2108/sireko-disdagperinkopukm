@@ -18,6 +18,7 @@ export default function NavbarAdmin() {
     { name: 'Daftar Koperasi', path: '/admin/koperasi' },
     { name: 'Status Keragaan', path: '/admin/keragaan' },
     { name: 'Status Kesehatan', path: '/admin/kesehatan' },
+    { name: 'Pengaturan', path: '/admin/pengaturan' },
   ]
 
   return (

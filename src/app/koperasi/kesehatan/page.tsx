@@ -11,11 +11,18 @@ export default function KesehatanKoperasi() {
   const [dokumenList, setDokumenList] = useState<any[]>([])
   const [statusUmum, setStatusUmum] = useState('merah')
   
-  // State untuk Upload
-  const [file, setFile] = useState<File | null>(null)
-  const [jenisDokumen, setJenisDokumen] = useState('lembar_kerja_ods')
-  const [tanggalInput, setTanggalInput] = useState(new Date().toISOString().split('T')[0])
+  // State untuk Kertas Kerja
+  const [kategoriKUK, setKategoriKUK] = useState('KUK1_2')
+  const [jenisKoperasi, setJenisKoperasi] = useState('KSP')
+  const [fileKertas, setFileKertas] = useState<File | null>(null)
+  const [tanggalKertas, setTanggalKertas] = useState(new Date().toISOString().split('T')[0])
+  
+  // State untuk Surat Pernyataan
+  const [fileSurat, setFileSurat] = useState<File | null>(null)
+  const [tanggalSurat, setTanggalSurat] = useState(new Date().toISOString().split('T')[0])
+
   const [isUploading, setIsUploading] = useState(false)
+  const [uploadType, setUploadType] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -62,33 +69,35 @@ export default function KesehatanKoperasi() {
     }
   }
 
-  const handleUpload = async (e: React.FormEvent) => {
+  const handleUpload = async (e: React.FormEvent, jenis: string, fileToUpload: File | null, tanggal: string, resetFile: any) => {
     e.preventDefault()
-    if (!file) {
-      toast.error("Pilih file PDF terlebih dahulu!")
+    if (!fileToUpload) {
+      toast.error("Pilih file terlebih dahulu!")
       return
     }
     
     setIsUploading(true)
+    setUploadType(jenis)
 
     try {
       // 1. Upload File ke Storage
-      const fileName = `${profil.id}/${jenisDokumen}-${Date.now()}.pdf`
-      const { error: uploadError } = await supabase.storage.from('berkas_sireko').upload(`kesehatan/${fileName}`, file)
+      const fileExt = fileToUpload.name.split('.').pop()
+      const fileName = `${profil.id}/${jenis}-${Date.now()}.${fileExt}`
+      const { error: uploadError } = await supabase.storage.from('berkas_sireko').upload(`kesehatan/${fileName}`, fileToUpload)
       
       if (uploadError) {
         console.error("Error Storage:", uploadError)
-        throw new Error("Gagal upload file ke storage. Pastikan file berformat PDF.")
+        throw new Error("Gagal upload file ke storage.")
       }
       
       // 2. Dapatkan URL Public
       const { data: publicUrlData } = supabase.storage.from('berkas_sireko').getPublicUrl(`kesehatan/${fileName}`)
       
-      // 3. Masukkan ke Database dengan jenis dokumen spesifik
+      // 3. Masukkan ke Database
       const { error: insertError } = await supabase.from('dokumen_kesehatan').insert({ 
         koperasi_id: profil.id, 
-        jenis_dokumen: jenisDokumen, 
-        tanggal_input: tanggalInput,
+        jenis_dokumen: jenis, 
+        tanggal_input: tanggal,
         file_path: publicUrlData.publicUrl, 
         status_indikator: 'merah' 
       })
@@ -96,13 +105,30 @@ export default function KesehatanKoperasi() {
       if (insertError) throw insertError
 
       toast.success('Dokumen Kesehatan berhasil diunggah!')
-      setFile(null)
+      resetFile(null)
       fetchDokumen(profil.id)
     } catch (error: any) { 
       console.error("CRITICAL ERROR:", error)
       toast.error(error.message) 
     } finally { 
       setIsUploading(false) 
+      setUploadType('')
+    }
+  }
+
+  const handleDownloadTemplate = async () => {
+    const filename = `${kategoriKUK}_${jenisKoperasi}.xlsx`
+    
+    const { data } = supabase.storage
+      .from('berkas_sireko')
+      .getPublicUrl(`templates/${filename}`)
+      
+    if (data && data.publicUrl) {
+      // Buka URL Supabase di tab baru
+      window.open(data.publicUrl, '_blank')
+      toast.success(`Mengunduh template: ${filename}`)
+    } else {
+      toast.error("Gagal mendapatkan link template.")
     }
   }
 
@@ -118,8 +144,9 @@ export default function KesehatanKoperasi() {
 
   const getFormatName = (kode: string) => {
     const formatNames: any = {
+      kertas_kerja: 'Kertas Kerja Verifikasi Mandiri',
+      surat_pernyataan: 'Surat Pernyataan Verifikasi Mandiri',
       lembar_kerja_ods: 'Lembar Kerja ODS',
-      surat_pernyataan: 'Surat Pernyataan Kepatuhan',
       verifikasi_mandiri: 'Verifikasi Mandiri'
     }
     return formatNames[kode] || kode.replace('_', ' ')
@@ -144,37 +171,84 @@ export default function KesehatanKoperasi() {
           </div>
         </div>
 
-        {/* 2. FORM UPLOAD 3 JENIS DOKUMEN */}
-        <div className="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-200">
-            <h2 className="text-lg font-bold text-slate-900 mb-2">Unggah Dokumen Kesehatan (.pdf)</h2>
-            <p className="text-sm text-slate-600 mb-5 font-medium">Lengkapi 3 dokumen wajib di bawah ini untuk memulai proses verifikasi kesehatan.</p>
+        {/* 2. BOX 1: KERTAS KERJA VERIFIKASI MANDIRI */}
+        <div className="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-200 mt-6">
+            <h2 className="text-lg font-bold text-slate-900 mb-2">1. Kertas Kerja Verifikasi Mandiri</h2>
+            <p className="text-sm text-slate-600 mb-5 font-medium">Unduh template yang sesuai, isi dengan lengkap, dan unggah kembali dalam format Excel (.xlsx / .xls).</p>
             
-            <form onSubmit={handleUpload} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Kiri: Unduh Template */}
+              <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-between">
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Jenis Dokumen:</label>
-                  <select value={jenisDokumen} onChange={(e) => setJenisDokumen(e.target.value)} className="w-full rounded-md border border-slate-300 p-2.5 bg-white text-slate-900 font-bold shadow-sm focus:border-indigo-500">
-                      <option value="lembar_kerja_ods">Lembar Kerja ODS</option>
-                      <option value="surat_pernyataan">Surat Pernyataan Kepatuhan</option>
-                      <option value="verifikasi_mandiri">Verifikasi Mandiri</option>
-                  </select>
+                  <h3 className="text-md font-bold text-slate-800 mb-3 border-b pb-2">Unduh Template</h3>
+                  <div className="space-y-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Kategori KUK:</label>
+                      <select value={kategoriKUK} onChange={(e) => setKategoriKUK(e.target.value)} className="w-full rounded-md border border-slate-300 p-2 bg-slate-50 text-slate-900 font-medium focus:border-indigo-500">
+                        <option value="KUK1_2">KUK 1 & 2</option>
+                        <option value="KUK3">KUK 3</option>
+                        <option value="KUK4">KUK 4</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Jenis Koperasi:</label>
+                      <select value={jenisKoperasi} onChange={(e) => setJenisKoperasi(e.target.value)} className="w-full rounded-md border border-slate-300 p-2 bg-slate-50 text-slate-900 font-medium focus:border-indigo-500">
+                        <option value="KSP">Koperasi Simpan Pinjam</option>
+                        <option value="Koperasi_Desa">Koperasi Desa / Sektor Riil</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
+                <button onClick={handleDownloadTemplate} className="w-full py-2.5 bg-indigo-50 text-indigo-700 font-bold rounded shadow-sm hover:bg-indigo-100 transition-colors border border-indigo-200">
+                  Unduh Template (Excel)
+                </button>
+              </div>
+
+              {/* Kanan: Upload File */}
+              <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-between">
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Tanggal Input:</label>
-                  <input type="date" value={tanggalInput} max={new Date().toISOString().split('T')[0]} onChange={(e) => setTanggalInput(e.target.value)} className="w-full rounded-md border border-slate-300 p-2 bg-white text-slate-900 font-medium shadow-sm focus:border-indigo-500" />
+                  <h3 className="text-md font-bold text-slate-800 mb-3 border-b pb-2">Unggah File</h3>
+                  <form id="form-kertas-kerja" onSubmit={(e) => handleUpload(e, 'kertas_kerja', fileKertas, tanggalKertas, setFileKertas)} className="space-y-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Tanggal Input:</label>
+                      <input type="date" value={tanggalKertas} max={new Date().toISOString().split('T')[0]} onChange={(e) => setTanggalKertas(e.target.value)} className="w-full rounded-md border border-slate-300 p-2 bg-slate-50 text-slate-900 font-medium focus:border-indigo-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Pilih File Excel:</label>
+                      <input type="file" accept=".xlsx, .xls" onChange={(e) => setFileKertas(e.target.files?.[0] || null)} className="w-full text-sm text-slate-800 p-1.5 border border-slate-300 rounded bg-slate-50 shadow-sm" />
+                    </div>
+                  </form>
                 </div>
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Pilih File PDF:</label>
-                  <input type="file" accept=".pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} className="w-full text-sm text-slate-800 p-1.5 border border-slate-300 rounded bg-white shadow-sm" />
-                </div>
-                <div className="md:col-span-3 mt-2">
-                  <button type="submit" disabled={isUploading || !file} className="w-full sm:w-auto px-8 py-2.5 bg-indigo-600 text-white font-bold rounded shadow-md hover:bg-indigo-700 disabled:bg-slate-400 transition-colors">
-                    {isUploading ? "Mengunggah..." : "Upload Dokumen"}
-                  </button>
-                </div>
+                <button type="submit" form="form-kertas-kerja" disabled={isUploading || !fileKertas} className="w-full py-2.5 bg-indigo-600 text-white font-bold rounded shadow-md hover:bg-indigo-700 disabled:bg-slate-400 transition-colors">
+                  {isUploading && uploadType === 'kertas_kerja' ? "Mengunggah..." : "Upload Kertas Kerja"}
+                </button>
+              </div>
+            </div>
+        </div>
+
+        {/* 3. BOX 2: SURAT PERNYATAAN VERIFIKASI MANDIRI */}
+        <div className="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-200 mt-6">
+            <h2 className="text-lg font-bold text-slate-900 mb-2">2. Surat Pernyataan Verifikasi Mandiri</h2>
+            <p className="text-sm text-slate-600 mb-5 font-medium">Unggah Surat Pernyataan Verifikasi Mandiri (Excel / PDF).</p>
+            
+            <form onSubmit={(e) => handleUpload(e, 'surat_pernyataan', fileSurat, tanggalSurat, setFileSurat)} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">Tanggal Input:</label>
+                <input type="date" value={tanggalSurat} max={new Date().toISOString().split('T')[0]} onChange={(e) => setTanggalSurat(e.target.value)} className="w-full rounded-md border border-slate-300 p-2 bg-white text-slate-900 font-medium shadow-sm focus:border-indigo-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">Pilih File:</label>
+                <input type="file" accept=".pdf, .xlsx, .xls" onChange={(e) => setFileSurat(e.target.files?.[0] || null)} className="w-full text-sm text-slate-800 p-1.5 border border-slate-300 rounded bg-white shadow-sm" />
+              </div>
+              <div className="md:col-span-1">
+                <button type="submit" disabled={isUploading || !fileSurat} className="w-full px-4 py-2.5 bg-indigo-600 text-white font-bold rounded shadow-md hover:bg-indigo-700 disabled:bg-slate-400 transition-colors">
+                  {isUploading && uploadType === 'surat_pernyataan' ? "Mengunggah..." : "Upload Surat Pernyataan"}
+                </button>
+              </div>
             </form>
         </div>
 
-        {/* 3. RIWAYAT DOKUMEN KESEHATAN */}
+        {/* 4. RIWAYAT DOKUMEN KESEHATAN */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
           <h2 className="text-md font-bold text-slate-800 uppercase mb-4 tracking-wider">Riwayat Unggah Terakhir</h2>
           {dokumenList.length === 0 ? <p className="text-sm text-slate-500 italic font-medium py-4 text-center">Belum ada dokumen kesehatan yang diunggah.</p> : (
