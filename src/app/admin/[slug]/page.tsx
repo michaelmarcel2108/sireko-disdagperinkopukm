@@ -22,6 +22,7 @@ export default function AdminDetailKoperasi() {
   const [catatan, setCatatan] = useState('')
   const [suratFile, setSuratFile] = useState<File | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isObservasi, setIsObservasi] = useState(false)
 
   useEffect(() => {
     if (params?.slug) fetchKoperasiDetail(params.slug as string)
@@ -87,7 +88,7 @@ export default function AdminDetailKoperasi() {
       })
 
       if (error) throw error
-      toast.success('Keputusan Dinas dan Surat Verifikasi berhasil disimpan!')
+      toast.success('Verifikasi dan Validasi berhasil disimpan!')
       setSuratFile(null)
       fetchKoperasiDetail(profil.slug) // Refresh data
 
@@ -133,7 +134,8 @@ export default function AdminDetailKoperasi() {
             {/* Data Lengkap Keragaan */}
             {metrikData && (
               <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-                <h2 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2">Data Metrik Keragaan (Tahun {metrikData.tahun_laporan})</h2>
+                <h2 className="text-lg font-bold text-slate-800 mb-1">Data Metrik Keragaan (Tahun {metrikData.tahun_laporan})</h2>
+                <p className="text-sm text-slate-500 mb-4 border-b border-slate-100 pb-2">Ringkasan Laporan Tutup Buku (Sebagai Dasar Analisa)</p>
                 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
@@ -181,11 +183,20 @@ export default function AdminDetailKoperasi() {
                 {keragaanList.map(doc => (
                   <div key={doc.id} className="flex flex-col sm:flex-row justify-between sm:items-center p-3 border border-slate-100 bg-slate-50 rounded-lg gap-3">
                     <div>
-                      <p className="font-bold text-sm text-slate-800 capitalize">Laporan {doc.jenis_laporan?.replace('_', ' ')}</p>
+                      <p className="font-bold text-sm text-slate-800 capitalize">Laporan {doc.jenis_laporan?.replace('_', ' ')} <span className="text-xs text-indigo-600 ml-1">({doc.periode_laporan || 'bulanan'})</span></p>
                       <p className="text-xs text-slate-500">{new Date(doc.uploaded_at).toLocaleDateString('id-ID')}</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <a href={doc.file_path} target="_blank" className="text-xs font-bold text-indigo-600 hover:underline">Lihat CSV</a>
+                      <a 
+                        href={doc.file_path} 
+                        target="_blank" 
+                        onClick={() => {
+                          if(doc.status_indikator !== 'hijau') updateStatusDokumen('dokumen_keragaan', doc.id, 'hijau');
+                        }}
+                        className="text-xs font-bold text-indigo-600 hover:underline"
+                      >
+                        Lihat CSV
+                      </a>
                       <select 
                         value={doc.status_indikator} 
                         onChange={(e) => updateStatusDokumen('dokumen_keragaan', doc.id, e.target.value)}
@@ -209,11 +220,20 @@ export default function AdminDetailKoperasi() {
                 {kesehatanList.map(doc => (
                   <div key={doc.id} className="flex flex-col sm:flex-row justify-between sm:items-center p-3 border border-slate-100 bg-slate-50 rounded-lg gap-3">
                     <div>
-                      <p className="font-bold text-sm text-slate-800 capitalize">{doc.jenis_dokumen?.replace(/_/g, ' ')}</p>
+                      <p className="font-bold text-sm text-slate-800 capitalize">{doc.jenis_dokumen?.replace(/_/g, ' ')} <span className="text-xs text-indigo-600 ml-1">({doc.periode_laporan || 'bulanan'})</span></p>
                       <p className="text-xs text-slate-500">{new Date(doc.uploaded_at).toLocaleDateString('id-ID')}</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <a href={doc.file_path} target="_blank" className="text-xs font-bold text-indigo-600 hover:underline">Buka PDF</a>
+                      <a 
+                        href={doc.file_path} 
+                        target="_blank" 
+                        onClick={() => {
+                          if(doc.status_indikator !== 'hijau') updateStatusDokumen('dokumen_kesehatan', doc.id, 'hijau');
+                        }}
+                        className="text-xs font-bold text-indigo-600 hover:underline"
+                      >
+                        Buka PDF
+                      </a>
                       <select 
                         value={doc.status_indikator} 
                         onChange={(e) => updateStatusDokumen('dokumen_kesehatan', doc.id, e.target.value)}
@@ -234,8 +254,9 @@ export default function AdminDetailKoperasi() {
 
           {/* KOLOM KANAN: PANEL UPLOAD VERIFIKASI DINAS */}
           <div className="lg:col-span-1">
-            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm sticky top-24">
-              <h2 className="text-lg font-bold text-slate-900 mb-4">Keputusan Dinas</h2>
+           <div className="sticky top-24 space-y-6">
+            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+              <h2 className="text-lg font-bold text-slate-900 mb-4">Verifikasi dan Validasi</h2>
               
               <form onSubmit={handleVerifikasiSubmit} className="space-y-4">
                 <div>
@@ -279,15 +300,54 @@ export default function AdminDetailKoperasi() {
                   )}
                 </div>
 
+                <div className="flex items-center gap-2 mt-4">
+                  <input 
+                    type="checkbox" 
+                    id="observasi" 
+                    checked={isObservasi}
+                    onChange={(e) => setIsObservasi(e.target.checked)}
+                    className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                  />
+                  <label htmlFor="observasi" className="text-sm font-bold text-slate-700">
+                    Sudah Observasi Lapangan
+                  </label>
+                </div>
+                {statusVerif === 'disetujui' && !isObservasi && (
+                  <p className="text-xs text-red-600 font-bold mt-1">* Status Disetujui memerlukan Observasi Lapangan.</p>
+                )}
+
                 <button 
                   type="submit" 
-                  disabled={isSubmitting}
-                  className="w-full py-2.5 mt-2 bg-indigo-600 text-white font-bold rounded-lg shadow hover:bg-indigo-700 disabled:bg-slate-400 transition-colors"
+                  disabled={isSubmitting || (statusVerif === 'disetujui' && !isObservasi)}
+                  className="w-full py-2.5 mt-2 bg-indigo-600 text-white font-bold rounded-lg shadow hover:bg-indigo-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors"
                 >
                   {isSubmitting ? 'Menyimpan...' : 'Simpan & Publikasikan Surat'}
                 </button>
               </form>
             </div>
+
+            {/* PANEL PENETAPAN */}
+            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+              <h2 className="text-lg font-bold text-slate-900 mb-2">Penetapan</h2>
+              <p className="text-sm text-slate-500 mb-4">Sertifikat Kesehatan Koperasi.</p>
+              
+              {verifData?.status === 'disetujui' ? (
+                <div className="bg-green-50 border border-green-200 p-4 rounded-lg text-center">
+                  <p className="text-sm text-green-800 font-bold mb-3">Koperasi telah Terverifikasi dan Sertifikat dapat diterbitkan.</p>
+                  <button 
+                    onClick={() => toast.success('Sertifikat siap diunduh (Fitur PDF sedang dikembangkan)')}
+                    className="px-4 py-2 bg-green-600 text-white text-sm font-bold rounded shadow hover:bg-green-700 transition-colors w-full"
+                  >
+                    Unduh Sertifikat
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-slate-50 border border-slate-200 p-4 rounded-lg text-center">
+                  <p className="text-sm text-slate-500 italic">Sertifikat belum dapat diterbitkan. Koperasi harus dalam status Terverifikasi (Disetujui).</p>
+                </div>
+              )}
+            </div>
+           </div>
           </div>
 
         </div>

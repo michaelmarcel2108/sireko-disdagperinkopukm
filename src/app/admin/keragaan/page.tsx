@@ -14,6 +14,7 @@ export default function AdminKeragaan() {
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [filterKategori, setFilterKategori] = useState('semua')
+  const [filterPeriode, setFilterPeriode] = useState('semua')
 
   useEffect(() => {
     fetchData()
@@ -37,15 +38,13 @@ export default function AdminKeragaan() {
       if (!kops) return
 
       // 2. Ambil Dokumen Keragaan
-      const { data: docKeragaan } = await supabase.from('dokumen_keragaan').select('koperasi_id, status_indikator').order('uploaded_at', { ascending: false })
+      const { data: docKeragaan } = await supabase.from('dokumen_keragaan').select('koperasi_id, status_indikator, periode_laporan').order('uploaded_at', { ascending: false })
 
-      // Gabungkan Data
+      // Gabungkan Data (Simpan semua dokumen untuk difilter nanti)
       const combinedData = kops.map(kop => {
-        const keragaanMatch = docKeragaan?.find(d => d.koperasi_id === kop.id)
-
         return {
           ...kop,
-          status_keragaan: keragaanMatch?.status_indikator || 'belum_ada',
+          dokumen_keragaan: docKeragaan?.filter(d => d.koperasi_id === kop.id) || [],
         }
       })
 
@@ -90,7 +89,18 @@ export default function AdminKeragaan() {
               className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
-          <div className="w-full sm:w-auto">
+          <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2">
+            <select 
+              value={filterPeriode}
+              onChange={(e) => setFilterPeriode(e.target.value)}
+              className="w-full sm:w-auto px-4 py-2 border border-slate-300 rounded-lg text-sm bg-white font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              <option value="semua">Semua Periode</option>
+              <option value="bulanan">Bulanan</option>
+              <option value="triwulan">Trimester</option>
+              <option value="semesteran">Semesteran</option>
+              <option value="tahunan">Tahunan</option>
+            </select>
             <select 
               value={filterKategori}
               onChange={(e) => setFilterKategori(e.target.value)}
@@ -118,16 +128,28 @@ export default function AdminKeragaan() {
               </thead>
               <tbody className="divide-y divide-slate-200 bg-white">
                 {koperasiList
+                  .map((kop: any) => {
+                    let targetDoc = null;
+                    if (filterPeriode === 'semua') {
+                      targetDoc = kop.dokumen_keragaan[0];
+                    } else {
+                      targetDoc = kop.dokumen_keragaan.find((d: any) => d.periode_laporan === filterPeriode);
+                    }
+                    return {
+                      ...kop,
+                      status_keragaan_computed: targetDoc?.status_indikator || 'belum_ada'
+                    }
+                  })
                   .filter((kop: any) => {
                     const matchesSearch = kop.nama_koperasi?.toLowerCase().includes(debouncedSearch.toLowerCase())
-                    const matchesKategori = filterKategori === 'semua' || kop.status_keragaan === filterKategori
+                    const matchesKategori = filterKategori === 'semua' || kop.status_keragaan_computed === filterKategori
                     return matchesSearch && matchesKategori
                   })
                   .map((kop: any) => (
                   <tr key={kop.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-4 font-semibold text-slate-900">{kop.nama_koperasi}</td>
                     <td className="px-4 py-4 text-slate-600">{kop.nomor_badan_hukum || '-'}</td>
-                    <td className="px-4 py-4 text-center">{renderBadge(kop.status_keragaan)}</td>
+                    <td className="px-4 py-4 text-center">{renderBadge(kop.status_keragaan_computed)}</td>
                     <td className="px-4 py-4 text-right">
                       <button 
                         onClick={() => router.push(`/admin/${kop.slug}`)}
@@ -138,9 +160,20 @@ export default function AdminKeragaan() {
                     </td>
                   </tr>
                 ))}
-                {koperasiList.filter((kop: any) => {
+                {koperasiList.map((kop: any) => {
+                    let targetDoc = null;
+                    if (filterPeriode === 'semua') {
+                      targetDoc = kop.dokumen_keragaan[0];
+                    } else {
+                      targetDoc = kop.dokumen_keragaan.find((d: any) => d.periode_laporan === filterPeriode);
+                    }
+                    return {
+                      ...kop,
+                      status_keragaan_computed: targetDoc?.status_indikator || 'belum_ada'
+                    }
+                  }).filter((kop: any) => {
                     const matchesSearch = kop.nama_koperasi?.toLowerCase().includes(debouncedSearch.toLowerCase())
-                    const matchesKategori = filterKategori === 'semua' || kop.status_keragaan === filterKategori
+                    const matchesKategori = filterKategori === 'semua' || kop.status_keragaan_computed === filterKategori
                     return matchesSearch && matchesKategori
                   }).length === 0 && (
                   <tr>

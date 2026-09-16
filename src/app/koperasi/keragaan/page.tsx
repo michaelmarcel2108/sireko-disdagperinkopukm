@@ -139,6 +139,9 @@ export default function KeragaanKoperasi() {
       const payload = {
         ...cleanFormData,
         tanggal_laporan: formData.tanggal_laporan,
+        klasifikasi_laporan: formData.klasifikasi_laporan || 'bulanan',
+        status_rat: formData.status_rat || 'belum',
+        tanggal_rat: formData.tanggal_rat || null,
         ang_laki: parseNum(formData.ang_laki), ang_wanita: parseNum(formData.ang_wanita),
         kary_laki: parseNum(formData.kary_laki), kary_wanita: parseNum(formData.kary_wanita),
         mgr_laki: parseNum(formData.mgr_laki), mgr_wanita: parseNum(formData.mgr_wanita),
@@ -271,15 +274,20 @@ export default function KeragaanKoperasi() {
             
             {/* Input Tanggal Khusus Saat Add New */}
             {isAddingNew && (
-              <div className="bg-indigo-50/50 p-4 rounded-lg border border-indigo-100 flex items-center gap-4">
-                <label className="text-sm font-bold text-indigo-900">Tanggal Laporan Baru:</label>
-                <input 
-                  type="date" 
-                  value={formData.tanggal_laporan || ''} 
-                  onChange={(e) => handleInputChange('tanggal_laporan', e.target.value)} 
-                  className="border border-indigo-200 p-2 rounded-md focus:ring-indigo-500 focus:border-indigo-500 outline-none font-medium" 
-                  required
-                />
+              <div className="bg-indigo-50/50 p-4 rounded-lg border border-indigo-100 flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-bold text-indigo-900">Tanggal Laporan Baru:</label>
+                  <input type="date" value={formData.tanggal_laporan || ''} onChange={(e) => handleInputChange('tanggal_laporan', e.target.value)} className="border border-indigo-200 p-2 rounded-md focus:ring-indigo-500 focus:border-indigo-500 outline-none font-medium" required />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-bold text-indigo-900">Klasifikasi:</label>
+                  <select value={formData.klasifikasi_laporan || 'bulanan'} onChange={(e) => handleInputChange('klasifikasi_laporan', e.target.value)} className="border border-indigo-200 p-2 rounded-md focus:ring-indigo-500 focus:border-indigo-500 outline-none font-medium">
+                    <option value="bulanan">Bulanan</option>
+                    <option value="trimester">Trimester</option>
+                    <option value="semesteran">Semesteran</option>
+                    <option value="tahunan">Tahunan</option>
+                  </select>
+                </div>
               </div>
             )}
 
@@ -351,6 +359,32 @@ export default function KeragaanKoperasi() {
                     <tr>
                       <td className="px-4 py-3 font-semibold text-slate-800">Modal Luar</td>
                       <td className="px-4 py-3">{isAddingNew ? <input type="number" min="0" value={formData.modalluar || ''} onChange={(e) => handleInputChange('modalluar', e.target.value)} className="border p-2 w-full max-w-md rounded focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-slate-50" /> : <span className="font-medium text-slate-700">{formatRp(metrikData?.modalluar)}</span>}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-3 font-semibold text-slate-800">Pelaksanaan RAT</td>
+                      <td className="px-4 py-3">
+                        {isAddingNew ? (
+                          <div className="flex flex-wrap gap-2 items-center">
+                            <select 
+                              value={formData.status_rat || 'belum'} 
+                              onChange={(e) => handleInputChange('status_rat', e.target.value)} 
+                              className="border p-2 rounded focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-slate-50"
+                            >
+                              <option value="belum">Belum Dilaksanakan</option>
+                              <option value="sudah">Sudah Dilaksanakan</option>
+                            </select>
+                            {formData.status_rat === 'sudah' && (
+                              <input type="date" value={formData.tanggal_rat || ''} onChange={(e) => handleInputChange('tanggal_rat', e.target.value)} className="border p-2 rounded focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-slate-50" />
+                            )}
+                          </div>
+                        ) : (
+                          <span className="font-medium text-slate-700">
+                            {metrikData?.status_rat === 'sudah' 
+                              ? `Sudah (Tgl: ${formatDateIndo(metrikData.tanggal_rat)})` 
+                              : 'Belum Dilaksanakan'}
+                          </span>
+                        )}
+                      </td>
                     </tr>
                   </tbody>
                 </table>
@@ -506,7 +540,46 @@ export default function KeragaanKoperasi() {
             </form>
         </div>
 
-        {/* 4. RIWAYAT DOKUMEN CSV */}
+        {/* 4. UPLOAD LAMPIRAN RAT */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <div className="mb-4">
+              <h2 className="text-lg font-bold text-slate-900 mb-1">Unggah Lampiran Bahan-Bahan Ringkas RAT</h2>
+              <p className="text-sm text-slate-600 font-medium">Unggah file pendukung seperti presentasi RAT, risalah, atau laporan ringkas (Format PDF / ZIP).</p>
+            </div>
+            <form 
+              onSubmit={async (e) => {
+                e.preventDefault()
+                const ratFile = (e.target as any).rat_file.files[0]
+                if (!ratFile) { toast.error("Pilih file lampiran RAT terlebih dahulu!"); return }
+                const toastId = toast.loading("Mengunggah lampiran...")
+                setIsUploading(true)
+                try {
+                  const fileName = `${profil.id}/lampiran_rat-${Date.now()}.${ratFile.name.split('.').pop()}`
+                  const { error: uploadError } = await supabase.storage.from('berkas_sireko').upload(`keragaan/${fileName}`, ratFile)
+                  if (uploadError) throw new Error(uploadError.message)
+                  const { data: publicUrlData } = supabase.storage.from('berkas_sireko').getPublicUrl(`keragaan/${fileName}`)
+                  const { error: dbError } = await supabase.from('dokumen_keragaan').insert({ 
+                    koperasi_id: profil.id, jenis_laporan: 'Lampiran RAT', periode_laporan: 'tahunan',
+                    file_path: publicUrlData.publicUrl, status_indikator: 'merah' 
+                  })
+                  if (dbError) throw new Error(dbError.message)
+                  toast.success('Lampiran RAT berhasil diunggah!', { id: toastId })
+                  checkUserAndFetchData()
+                } catch (error: any) { toast.error(error.message, { id: toastId }) } finally { setIsUploading(false); (e.target as HTMLFormElement).reset() }
+              }}
+              className="flex gap-4 items-end flex-wrap bg-slate-50 p-4 rounded-lg border border-slate-100"
+            >
+                <div className="flex-1 min-w-[200px]">
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Pilih File (PDF/ZIP):</label>
+                  <input name="rat_file" type="file" accept=".pdf,.zip,.rar" className="w-full text-sm text-slate-800 p-1.5 border border-slate-300 rounded bg-white shadow-sm outline-none focus:border-indigo-500" />
+                </div>
+                <button type="submit" disabled={isUploading} className="px-6 py-2 bg-indigo-600 text-white font-bold rounded shadow-sm hover:bg-indigo-700 disabled:bg-slate-400 transition-colors h-[42px]">
+                  {isUploading ? "Mengunggah..." : "Upload Lampiran RAT"}
+                </button>
+            </form>
+        </div>
+
+        {/* 5. RIWAYAT DOKUMEN CSV & RAT */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
           <h2 className="text-md font-bold text-slate-800 uppercase mb-4 tracking-wider">Riwayat Unggahan Dokumen (Berkas Asli)</h2>
           {dokumenList.length === 0 ? <p className="text-sm text-slate-500 italic">Belum ada dokumen yang diunggah.</p> : (

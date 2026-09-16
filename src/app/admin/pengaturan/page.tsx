@@ -184,6 +184,14 @@ export default function PengaturanAdmin() {
           </p>
 
           <form onSubmit={handleUploadTemplate} className="space-y-4">
+            <div className="mb-4 bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+              <p className="text-xs text-indigo-800 font-medium">
+                <strong>Klasifikasi KUK (Berdasarkan Total Modal/Aset):</strong><br/>
+                • KUK 1 & 2: s.d Rp 15 Miliar<br/>
+                • KUK 3: &gt; Rp 15 Miliar s.d Rp 40 Miliar<br/>
+                • KUK 4: &gt; Rp 40 Miliar
+              </p>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-1">Kategori KUK:</label>
@@ -197,7 +205,11 @@ export default function PengaturanAdmin() {
                 <label className="block text-sm font-bold text-slate-700 mb-1">Jenis Koperasi:</label>
                 <select value={jenisKoperasi} onChange={(e) => setJenisKoperasi(e.target.value)} className="w-full rounded-md border border-slate-300 p-2.5 bg-slate-50 text-slate-900 font-medium focus:border-indigo-500">
                   <option value="KSP">Koperasi Simpan Pinjam</option>
-                  <option value="Koperasi_Desa">Koperasi Desa / Sektor Riil</option>
+                  <option value="Koperasi_Konsumen">Koperasi Konsumen</option>
+                  <option value="Koperasi_Produsen">Koperasi Produsen</option>
+                  <option value="Koperasi_Pemasaran">Koperasi Pemasaran</option>
+                  <option value="Koperasi_Jasa">Koperasi Jasa</option>
+                  <option value="Koperasi_Serba_Usaha">Koperasi Serba Usaha</option>
                 </select>
               </div>
             </div>

@@ -16,10 +16,12 @@ export default function KesehatanKoperasi() {
   const [jenisKoperasi, setJenisKoperasi] = useState('KSP')
   const [fileKertas, setFileKertas] = useState<File | null>(null)
   const [tanggalKertas, setTanggalKertas] = useState(new Date().toISOString().split('T')[0])
-  
+  const [periodeKertas, setPeriodeKertas] = useState('bulanan')
+
   // State untuk Surat Pernyataan
   const [fileSurat, setFileSurat] = useState<File | null>(null)
   const [tanggalSurat, setTanggalSurat] = useState(new Date().toISOString().split('T')[0])
+  const [periodeSurat, setPeriodeSurat] = useState('bulanan')
 
   const [isUploading, setIsUploading] = useState(false)
   const [uploadType, setUploadType] = useState('')
@@ -69,7 +71,7 @@ export default function KesehatanKoperasi() {
     }
   }
 
-  const handleUpload = async (e: React.FormEvent, jenis: string, fileToUpload: File | null, tanggal: string, resetFile: any) => {
+  const handleUpload = async (e: React.FormEvent, jenis: string, fileToUpload: File | null, tanggal: string, periode: string, resetFile: any) => {
     e.preventDefault()
     if (!fileToUpload) {
       toast.error("Pilih file terlebih dahulu!")
@@ -98,6 +100,7 @@ export default function KesehatanKoperasi() {
         koperasi_id: profil.id, 
         jenis_dokumen: jenis, 
         tanggal_input: tanggal,
+        periode_laporan: periode,
         file_path: publicUrlData.publicUrl, 
         status_indikator: 'merah' 
       })
@@ -181,6 +184,14 @@ export default function KesehatanKoperasi() {
               <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-between">
                 <div>
                   <h3 className="text-md font-bold text-slate-800 mb-3 border-b pb-2">Unduh Template</h3>
+                  <div className="mb-4 bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+                    <p className="text-xs text-indigo-800 font-medium">
+                      <strong>Klasifikasi KUK (Berdasarkan Total Modal/Aset):</strong><br/>
+                      • KUK 1 & 2: s.d Rp 15 Miliar<br/>
+                      • KUK 3: &gt; Rp 15 Miliar s.d Rp 40 Miliar<br/>
+                      • KUK 4: &gt; Rp 40 Miliar
+                    </p>
+                  </div>
                   <div className="space-y-4 mb-4">
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-1">Kategori KUK:</label>
@@ -194,7 +205,11 @@ export default function KesehatanKoperasi() {
                       <label className="block text-sm font-bold text-slate-700 mb-1">Jenis Koperasi:</label>
                       <select value={jenisKoperasi} onChange={(e) => setJenisKoperasi(e.target.value)} className="w-full rounded-md border border-slate-300 p-2 bg-slate-50 text-slate-900 font-medium focus:border-indigo-500">
                         <option value="KSP">Koperasi Simpan Pinjam</option>
-                        <option value="Koperasi_Desa">Koperasi Desa / Sektor Riil</option>
+                        <option value="Koperasi_Konsumen">Koperasi Konsumen</option>
+                        <option value="Koperasi_Produsen">Koperasi Produsen</option>
+                        <option value="Koperasi_Pemasaran">Koperasi Pemasaran</option>
+                        <option value="Koperasi_Jasa">Koperasi Jasa</option>
+                        <option value="Koperasi_Serba_Usaha">Koperasi Serba Usaha</option>
                       </select>
                     </div>
                   </div>
@@ -208,10 +223,21 @@ export default function KesehatanKoperasi() {
               <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-between">
                 <div>
                   <h3 className="text-md font-bold text-slate-800 mb-3 border-b pb-2">Unggah File</h3>
-                  <form id="form-kertas-kerja" onSubmit={(e) => handleUpload(e, 'kertas_kerja', fileKertas, tanggalKertas, setFileKertas)} className="space-y-4 mb-4">
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1">Tanggal Input:</label>
-                      <input type="date" value={tanggalKertas} max={new Date().toISOString().split('T')[0]} onChange={(e) => setTanggalKertas(e.target.value)} className="w-full rounded-md border border-slate-300 p-2 bg-slate-50 text-slate-900 font-medium focus:border-indigo-500" />
+                  <form id="form-kertas-kerja" onSubmit={(e) => handleUpload(e, 'kertas_kerja', fileKertas, tanggalKertas, periodeKertas, setFileKertas)} className="space-y-4 mb-4">
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <label className="block text-sm font-bold text-slate-700 mb-1">Tanggal Input:</label>
+                        <input type="date" value={tanggalKertas} max={new Date().toISOString().split('T')[0]} onChange={(e) => setTanggalKertas(e.target.value)} className="w-full rounded-md border border-slate-300 p-2 bg-slate-50 text-slate-900 font-medium focus:border-indigo-500" />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-sm font-bold text-slate-700 mb-1">Periode:</label>
+                        <select value={periodeKertas} onChange={(e) => setPeriodeKertas(e.target.value)} className="w-full rounded-md border border-slate-300 p-2 bg-slate-50 text-slate-900 font-medium focus:border-indigo-500">
+                          <option value="bulanan">Bulanan</option>
+                          <option value="triwulan">Trimester</option>
+                          <option value="semesteran">Semesteran</option>
+                          <option value="tahunan">Tahunan</option>
+                        </select>
+                      </div>
                     </div>
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-1">Pilih File Excel:</label>
@@ -231,10 +257,19 @@ export default function KesehatanKoperasi() {
             <h2 className="text-lg font-bold text-slate-900 mb-2">2. Surat Pernyataan Verifikasi Mandiri</h2>
             <p className="text-sm text-slate-600 mb-5 font-medium">Unggah Surat Pernyataan Verifikasi Mandiri (Excel / PDF).</p>
             
-            <form onSubmit={(e) => handleUpload(e, 'surat_pernyataan', fileSurat, tanggalSurat, setFileSurat)} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <form onSubmit={(e) => handleUpload(e, 'surat_pernyataan', fileSurat, tanggalSurat, periodeSurat, setFileSurat)} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-1">Tanggal Input:</label>
                 <input type="date" value={tanggalSurat} max={new Date().toISOString().split('T')[0]} onChange={(e) => setTanggalSurat(e.target.value)} className="w-full rounded-md border border-slate-300 p-2 bg-white text-slate-900 font-medium shadow-sm focus:border-indigo-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">Periode:</label>
+                <select value={periodeSurat} onChange={(e) => setPeriodeSurat(e.target.value)} className="w-full rounded-md border border-slate-300 p-2 bg-white text-slate-900 font-medium shadow-sm focus:border-indigo-500">
+                  <option value="bulanan">Bulanan</option>
+                  <option value="triwulan">Trimester</option>
+                  <option value="semesteran">Semesteran</option>
+                  <option value="tahunan">Tahunan</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-1">Pilih File:</label>
@@ -256,7 +291,7 @@ export default function KesehatanKoperasi() {
               {dokumenList.map((doc: any) => (
                 <div key={doc.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-4 border border-slate-200 rounded-lg bg-slate-50 hover:border-indigo-200 transition-colors gap-4">
                   <div>
-                    <p className="font-bold text-slate-900 capitalize text-md">{getFormatName(doc.jenis_dokumen)}</p>
+                    <p className="font-bold text-slate-900 capitalize text-md">{getFormatName(doc.jenis_dokumen)} <span className="text-sm text-indigo-600 ml-2">({doc.periode_laporan || 'bulanan'})</span></p>
                     <p className="text-xs font-medium text-slate-600 mt-1">Tanggal Input: <span className="font-bold text-slate-800">{new Date(doc.tanggal_input).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</span></p>
                   </div>
                   <div className="flex items-center gap-4">

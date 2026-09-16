@@ -14,6 +14,7 @@ export default function AdminDaftarKoperasi() {
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [filterKategori, setFilterKategori] = useState('semua')
+  const [filterPeriode, setFilterPeriode] = useState('semua')
 
   useEffect(() => {
     fetchKoperasiData()
@@ -40,20 +41,18 @@ export default function AdminDaftarKoperasi() {
       const { data: verifData } = await supabase.from('verifikasi_dinas').select('koperasi_id, status').order('created_at', { ascending: false })
       
       // 3. Ambil Dokumen Keragaan & Kesehatan (Untuk Cek Status Laporan)
-      const { data: docKeragaan } = await supabase.from('dokumen_keragaan').select('koperasi_id, status_indikator').order('uploaded_at', { ascending: false })
-      const { data: docKesehatan } = await supabase.from('dokumen_kesehatan').select('koperasi_id, status_indikator').order('uploaded_at', { ascending: false })
+      const { data: docKeragaan } = await supabase.from('dokumen_keragaan').select('koperasi_id, status_indikator, periode_laporan').order('uploaded_at', { ascending: false })
+      const { data: docKesehatan } = await supabase.from('dokumen_kesehatan').select('koperasi_id, status_indikator, periode_laporan').order('uploaded_at', { ascending: false })
 
       // Gabungkan Data
       const combinedData = kops.map(kop => {
         const verifMatch = verifData?.find(v => v.koperasi_id === kop.id)
-        const keragaanMatch = docKeragaan?.find(d => d.koperasi_id === kop.id)
-        const kesehatanMatch = docKesehatan?.find(d => d.koperasi_id === kop.id)
 
         return {
           ...kop,
           status_verifikasi: verifMatch?.status || 'menunggu',
-          status_keragaan: keragaanMatch?.status_indikator || 'belum_ada',
-          status_kesehatan: kesehatanMatch?.status_indikator || 'belum_ada'
+          dokumen_keragaan: docKeragaan?.filter(d => d.koperasi_id === kop.id) || [],
+          dokumen_kesehatan: docKesehatan?.filter(d => d.koperasi_id === kop.id) || [],
         }
       })
 
@@ -105,7 +104,18 @@ export default function AdminDaftarKoperasi() {
               className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
-          <div className="w-full sm:w-auto">
+          <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2">
+            <select 
+              value={filterPeriode}
+              onChange={(e) => setFilterPeriode(e.target.value)}
+              className="w-full sm:w-auto px-4 py-2 border border-slate-300 rounded-lg text-sm bg-white font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              <option value="semua">Semua Periode</option>
+              <option value="bulanan">Bulanan</option>
+              <option value="triwulan">Trimester</option>
+              <option value="semesteran">Semesteran</option>
+              <option value="tahunan">Tahunan</option>
+            </select>
             <select 
               value={filterKategori}
               onChange={(e) => setFilterKategori(e.target.value)}
@@ -134,6 +144,22 @@ export default function AdminDaftarKoperasi() {
               </thead>
               <tbody className="divide-y divide-slate-200 bg-white">
                 {koperasiList
+                  .map((kop: any) => {
+                    let targetKeragaan = null;
+                    let targetKesehatan = null;
+                    if (filterPeriode === 'semua') {
+                      targetKeragaan = kop.dokumen_keragaan?.[0];
+                      targetKesehatan = kop.dokumen_kesehatan?.[0];
+                    } else {
+                      targetKeragaan = kop.dokumen_keragaan?.find((d: any) => d.periode_laporan === filterPeriode);
+                      targetKesehatan = kop.dokumen_kesehatan?.find((d: any) => d.periode_laporan === filterPeriode);
+                    }
+                    return {
+                      ...kop,
+                      status_keragaan_computed: targetKeragaan?.status_indikator || 'belum_ada',
+                      status_kesehatan_computed: targetKesehatan?.status_indikator || 'belum_ada'
+                    }
+                  })
                   .filter((kop: any) => {
                     const matchesSearch = kop.nama_koperasi?.toLowerCase().includes(debouncedSearch.toLowerCase())
                     const matchesKategori = filterKategori === 'semua' || kop.status_verifikasi === filterKategori
@@ -143,8 +169,8 @@ export default function AdminDaftarKoperasi() {
                   <tr key={kop.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-4 font-semibold text-slate-900">{kop.nama_koperasi}</td>
                     <td className="px-4 py-4 text-slate-600">{kop.nomor_badan_hukum || '-'}</td>
-                    <td className="px-4 py-4 text-center">{renderBadge(kop.status_keragaan, 'dokumen')}</td>
-                    <td className="px-4 py-4 text-center">{renderBadge(kop.status_kesehatan, 'dokumen')}</td>
+                    <td className="px-4 py-4 text-center">{renderBadge(kop.status_keragaan_computed, 'keragaan')}</td>
+                    <td className="px-4 py-4 text-center">{renderBadge(kop.status_kesehatan_computed, 'kesehatan')}</td>
                     <td className="px-4 py-4 text-center">{renderBadge(kop.status_verifikasi, 'verifikasi')}</td>
                     <td className="px-4 py-4 text-right">
                       <button 
@@ -156,7 +182,11 @@ export default function AdminDaftarKoperasi() {
                     </td>
                   </tr>
                 ))}
-                {koperasiList.filter((kop: any) => {
+                {koperasiList.map((kop: any) => {
+                    return {
+                      ...kop
+                    }
+                  }).filter((kop: any) => {
                     const matchesSearch = kop.nama_koperasi?.toLowerCase().includes(debouncedSearch.toLowerCase())
                     const matchesKategori = filterKategori === 'semua' || kop.status_verifikasi === filterKategori
                     return matchesSearch && matchesKategori
