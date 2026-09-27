@@ -18,7 +18,7 @@ export default function AdminDetailKoperasi() {
   const [metrikData, setMetrikData] = useState<any>(null)
 
   // State Form Verifikasi
-  const [statusVerif, setStatusVerif] = useState('menunggu')
+  const [statusVerif, setStatusVerif] = useState('belum_diupload')
   const [catatan, setCatatan] = useState('')
   const [suratFile, setSuratFile] = useState<File | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -66,7 +66,7 @@ export default function AdminDetailKoperasi() {
     setIsSubmitting(true)
 
     try {
-      let publicUrl = verifData?.surat_verifikasi_url || null
+      let publicUrl = verifData?.file_path || null
 
       // Jika Admin mengunggah file Surat baru
       if (suratFile) {
@@ -82,16 +82,33 @@ export default function AdminDetailKoperasi() {
       // Simpan ke tabel verifikasi_dinas
       const { error } = await supabase.from('verifikasi_dinas').insert({
         koperasi_id: profil.id,
+        kategori: 'kesehatan',
         status: statusVerif,
         catatan: catatan,
-        surat_verifikasi_url: publicUrl
+        file_path: publicUrl || '-'
       })
 
       if (error) throw error
-      toast.success('Verifikasi dan Validasi berhasil disimpan!')
+      toast.success('Validasi berhasil disimpan!')
       setSuratFile(null)
       fetchKoperasiDetail(profil.slug) // Refresh data
 
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleHapusSurat = async () => {
+    if (!verifData?.id) return
+    if (!confirm('Apakah Anda yakin ingin menghapus surat validasi ini?')) return
+    setIsSubmitting(true)
+    try {
+      const { error } = await supabase.from('verifikasi_dinas').update({ file_path: '-' }).eq('id', verifData.id)
+      if (error) throw error
+      toast.success('Surat validasi berhasil dihapus.')
+      fetchKoperasiDetail(profil.slug)
     } catch (err: any) {
       toast.error(err.message)
     } finally {
@@ -252,23 +269,23 @@ export default function AdminDetailKoperasi() {
 
           </div>
 
-          {/* KOLOM KANAN: PANEL UPLOAD VERIFIKASI DINAS */}
+          {/* KOLOM KANAN: PANEL UPLOAD VALIDASI DINAS */}
           <div className="lg:col-span-1">
            <div className="sticky top-24 space-y-6">
             <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-              <h2 className="text-lg font-bold text-slate-900 mb-4">Verifikasi dan Validasi</h2>
+              <h2 className="text-lg font-bold text-slate-900 mb-4">Validasi Dinas</h2>
               
               <form onSubmit={handleVerifikasiSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Status Verifikasi</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Status Validasi</label>
                   <select 
                     value={statusVerif} 
                     onChange={(e) => setStatusVerif(e.target.value)} 
                     className="w-full p-2.5 bg-white border border-slate-300 rounded-md font-bold focus:border-indigo-500 shadow-sm"
                   >
-                    <option value="menunggu">Menunggu / Diproses</option>
-                    <option value="disetujui">Disetujui (Terverifikasi)</option>
-                    <option value="ditolak">Ditolak / Revisi</option>
+                    <option value="belum_diupload">Belum Diupload</option>
+                    <option value="proses_verifikasi">Proses Verifikasi</option>
+                    <option value="sudah_validasi">Sudah Validasi</option>
                   </select>
                 </div>
 
@@ -284,7 +301,7 @@ export default function AdminDetailKoperasi() {
                 </div>
 
                 <div className="border-t border-slate-200 pt-4 mt-2">
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Upload Surat Verifikasi (.pdf)</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Upload Surat Validasi (.pdf)</label>
                   <p className="text-xs text-slate-500 mb-2">Unggah surat resmi dari dinas yang menyatakan status koperasi ini.</p>
                   <input 
                     type="file" 
@@ -293,10 +310,20 @@ export default function AdminDetailKoperasi() {
                     className="w-full text-sm text-slate-700 p-1.5 border border-slate-300 rounded bg-white shadow-sm" 
                   />
                   
-                  {verifData?.surat_verifikasi_url && !suratFile && (
-                    <p className="text-xs mt-2 text-indigo-600 font-bold">
-                      &#10003; Surat sudah pernah diunggah. <a href={verifData.surat_verifikasi_url} target="_blank" className="underline">Lihat File</a>
-                    </p>
+                  {verifData?.file_path && verifData.file_path !== '-' && !suratFile && (
+                    <div className="flex items-center justify-between mt-3 bg-slate-50 border border-slate-200 p-2 rounded-lg">
+                      <p className="text-xs text-indigo-600 font-bold flex items-center gap-1">
+                        &#10003; Surat sudah diunggah. <a href={verifData.file_path} target="_blank" className="underline hover:text-indigo-800">Lihat File</a>
+                      </p>
+                      <button 
+                        type="button" 
+                        onClick={handleHapusSurat}
+                        disabled={isSubmitting}
+                        className="text-[11px] px-2 py-1 bg-red-100 text-red-600 hover:bg-red-200 font-bold rounded transition-colors disabled:opacity-50"
+                      >
+                        Hapus Surat
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -312,41 +339,21 @@ export default function AdminDetailKoperasi() {
                     Sudah Observasi Lapangan
                   </label>
                 </div>
-                {statusVerif === 'disetujui' && !isObservasi && (
-                  <p className="text-xs text-red-600 font-bold mt-1">* Status Disetujui memerlukan Observasi Lapangan.</p>
+                {statusVerif === 'sudah_validasi' && !isObservasi && (
+                  <p className="text-xs text-red-600 font-bold mt-1">* Status Sudah Validasi memerlukan Observasi Lapangan.</p>
                 )}
 
                 <button 
                   type="submit" 
-                  disabled={isSubmitting || (statusVerif === 'disetujui' && !isObservasi)}
+                  disabled={isSubmitting || (statusVerif === 'sudah_validasi' && !isObservasi)}
                   className="w-full py-2.5 mt-2 bg-indigo-600 text-white font-bold rounded-lg shadow hover:bg-indigo-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors"
                 >
-                  {isSubmitting ? 'Menyimpan...' : 'Simpan & Publikasikan Surat'}
+                  {isSubmitting ? 'Menyimpan...' : 'Simpan Validasi'}
                 </button>
               </form>
             </div>
 
-            {/* PANEL PENETAPAN */}
-            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-              <h2 className="text-lg font-bold text-slate-900 mb-2">Penetapan</h2>
-              <p className="text-sm text-slate-500 mb-4">Sertifikat Kesehatan Koperasi.</p>
-              
-              {verifData?.status === 'disetujui' ? (
-                <div className="bg-green-50 border border-green-200 p-4 rounded-lg text-center">
-                  <p className="text-sm text-green-800 font-bold mb-3">Koperasi telah Terverifikasi dan Sertifikat dapat diterbitkan.</p>
-                  <button 
-                    onClick={() => toast.success('Sertifikat siap diunduh (Fitur PDF sedang dikembangkan)')}
-                    className="px-4 py-2 bg-green-600 text-white text-sm font-bold rounded shadow hover:bg-green-700 transition-colors w-full"
-                  >
-                    Unduh Sertifikat
-                  </button>
-                </div>
-              ) : (
-                <div className="bg-slate-50 border border-slate-200 p-4 rounded-lg text-center">
-                  <p className="text-sm text-slate-500 italic">Sertifikat belum dapat diterbitkan. Koperasi harus dalam status Terverifikasi (Disetujui).</p>
-                </div>
-              )}
-            </div>
+
            </div>
           </div>
 

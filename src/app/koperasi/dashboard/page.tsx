@@ -6,12 +6,14 @@ import { supabase } from '@/utils/supabase'
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from 'recharts'
+import toast from 'react-hot-toast'
 
 export default function KoperasiDashboard() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [keragaanChartData, setKeragaanChartData] = useState<any[]>([])
   const [kesehatanList, setKesehatanList] = useState<any[]>([])
+  const [verifData, setVerifData] = useState<any>(null)
 
   useEffect(() => {
     fetchDashboardData()
@@ -51,6 +53,15 @@ export default function KoperasiDashboard() {
           .limit(5)
         
         if (kData) setKesehatanList(kData)
+
+        const { data: vData } = await supabase
+          .from('verifikasi_dinas')
+          .select('*')
+          .eq('koperasi_id', pData.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        if (vData) setVerifData(vData)
       }
     } catch (err) {
       console.error("Gagal memuat dashboard:", err)
@@ -77,7 +88,7 @@ export default function KoperasiDashboard() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         
         {/* TOMBOL MODUL PINTASAN */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div 
             onClick={() => router.push('/koperasi/keragaan')}
             className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer flex flex-col items-center justify-center text-center group"
@@ -98,6 +109,33 @@ export default function KoperasiDashboard() {
             </div>
             <h3 className="font-bold text-lg text-slate-800">Modul Kesehatan</h3>
             <p className="text-sm text-slate-500 mt-1">Unggah PDF Lembar Kerja ODS & Surat Pernyataan</p>
+          </div>
+
+          <div 
+            onClick={() => {
+              if (verifData?.status === 'sudah_validasi') {
+                if (verifData?.file_path && verifData.file_path !== '-') {
+                  window.open(verifData.file_path, '_blank')
+                } else {
+                  toast.error('Sertifikat PDF belum tersedia atau ditarik oleh admin.')
+                }
+              } else {
+                toast.error('Sertifikat belum tersedia. Menunggu persetujuan admin.')
+              }
+            }}
+            className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-green-300 transition-all cursor-pointer flex flex-col items-center justify-center text-center group relative overflow-hidden"
+          >
+            <div className={`p-4 rounded-full mb-3 transition-colors ${verifData?.status === 'sudah_validasi' ? 'bg-green-50 text-green-600 group-hover:bg-green-600 group-hover:text-white' : 'bg-slate-50 text-slate-400 group-hover:bg-slate-200 group-hover:text-slate-600'}`}>
+              <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <h3 className="font-bold text-lg text-slate-800">Sertifikat Ketetapan</h3>
+            <p className="text-sm text-slate-500 mt-1">Unduh sertifikat validasi dinas</p>
+            {verifData?.status === 'sudah_validasi' && (
+              <span className="absolute top-3 right-3 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+              </span>
+            )}
           </div>
         </div>
 

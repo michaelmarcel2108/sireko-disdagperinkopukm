@@ -71,9 +71,9 @@ export default function AdminDaftarKoperasi() {
     let label = status
 
     if (type === 'verifikasi') {
-      if (status === 'disetujui') { colors = 'bg-green-100 text-green-800 border-green-200'; label = 'Terverifikasi' }
-      if (status === 'menunggu') { colors = 'bg-amber-100 text-amber-800 border-amber-200'; label = 'Menunggu' }
-      if (status === 'ditolak') { colors = 'bg-red-100 text-red-800 border-red-200'; label = 'Ditolak' }
+      if (status === 'sudah_validasi') { colors = 'bg-green-100 text-green-800 border-green-200'; label = 'Sudah Validasi' }
+      if (status === 'proses_verifikasi') { colors = 'bg-amber-100 text-amber-800 border-amber-200'; label = 'Proses Verifikasi' }
+      if (status === 'belum_diupload') { colors = 'bg-red-100 text-red-800 border-red-200'; label = 'Belum Diupload' }
     } else {
       if (status === 'hijau') { colors = 'bg-green-100 text-green-800 border-green-200'; label = 'Terverifikasi' }
       if (status === 'biru') { colors = 'bg-blue-100 text-blue-800 border-blue-200'; label = 'Diproses' }
@@ -121,10 +121,10 @@ export default function AdminDaftarKoperasi() {
               onChange={(e) => setFilterKategori(e.target.value)}
               className="w-full sm:w-auto px-4 py-2 border border-slate-300 rounded-lg text-sm bg-white font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             >
-              <option value="semua">Semua Status Verifikasi</option>
-              <option value="disetujui">Terverifikasi</option>
-              <option value="menunggu">Menunggu</option>
-              <option value="ditolak">Ditolak</option>
+              <option value="semua">Semua Status Validasi</option>
+              <option value="sudah_validasi">Sudah Validasi</option>
+              <option value="proses_verifikasi">Proses Verifikasi</option>
+              <option value="belum_diupload">Belum Diupload</option>
             </select>
           </div>
         </div>
@@ -138,7 +138,7 @@ export default function AdminDaftarKoperasi() {
                   <th className="px-4 py-3 text-left">Nomor Badan Hukum</th>
                   <th className="px-4 py-3 text-center">Status Keragaan</th>
                   <th className="px-4 py-3 text-center">Status Kesehatan</th>
-                  <th className="px-4 py-3 text-center">Verifikasi Dinas</th>
+                  <th className="px-4 py-3 text-center">Validasi Dinas</th>
                   <th className="px-4 py-3 text-right">Aksi</th>
                 </tr>
               </thead>

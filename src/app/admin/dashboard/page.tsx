@@ -31,8 +31,8 @@ export default function AdminDashboard() {
 
       // 2. Ambil Statistik Angka
       const { count: totalKop } = await supabase.from('profil_koperasi').select('*', { count: 'exact', head: true })
-      const { count: verifMenunggu } = await supabase.from('verifikasi_dinas').select('*', { count: 'exact', head: true }).eq('status', 'menunggu')
-      const { count: verifDisetujui } = await supabase.from('verifikasi_dinas').select('*', { count: 'exact', head: true }).eq('status', 'disetujui')
+      const { count: verifMenunggu } = await supabase.from('verifikasi_dinas').select('*', { count: 'exact', head: true }).eq('status', 'proses_verifikasi')
+      const { count: verifDisetujui } = await supabase.from('verifikasi_dinas').select('*', { count: 'exact', head: true }).eq('status', 'sudah_validasi')
 
       setStats({
         totalKoperasi: totalKop || 0,
@@ -122,12 +122,12 @@ export default function AdminDashboard() {
   // Komponen untuk me-render Badge Status Verifikasi di Tabel
   const renderStatusBadge = (status: string) => {
     switch (status) {
-      case 'disetujui':
-        return <span className="px-2.5 py-1 bg-green-100 text-green-800 border border-green-200 rounded-md text-[11px] font-bold uppercase shadow-sm">Terverifikasi</span>
-      case 'menunggu':
-        return <span className="px-2.5 py-1 bg-amber-100 text-amber-800 border border-amber-200 rounded-md text-[11px] font-bold uppercase shadow-sm">Menunggu Cek</span>
-      case 'ditolak':
-        return <span className="px-2.5 py-1 bg-red-100 text-red-800 border border-red-200 rounded-md text-[11px] font-bold uppercase shadow-sm">Ditolak</span>
+      case 'sudah_validasi':
+        return <span className="px-2.5 py-1 bg-green-100 text-green-800 border border-green-200 rounded-md text-[11px] font-bold uppercase shadow-sm">Sudah Validasi</span>
+      case 'proses_verifikasi':
+        return <span className="px-2.5 py-1 bg-amber-100 text-amber-800 border border-amber-200 rounded-md text-[11px] font-bold uppercase shadow-sm">Proses Verifikasi</span>
+      case 'belum_diupload':
+        return <span className="px-2.5 py-1 bg-red-100 text-red-800 border border-red-200 rounded-md text-[11px] font-bold uppercase shadow-sm">Belum Diupload</span>
       default:
         return <span className="px-2.5 py-1 bg-slate-100 text-slate-600 border border-slate-200 rounded-md text-[11px] font-bold uppercase shadow-sm">Belum Ada Data</span>
     }

@@ -192,6 +192,7 @@ export default function AdminKesehatan() {
               </tbody>
             </table>
           </div>
+        </section>
       </div>
     </main>
   )
