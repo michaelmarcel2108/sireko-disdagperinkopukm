@@ -18,6 +18,7 @@ export default function NavbarAdmin() {
     { name: 'Daftar Koperasi', path: '/admin/koperasi' },
     { name: 'Status Keragaan', path: '/admin/keragaan' },
     { name: 'Status Kesehatan', path: '/admin/kesehatan' },
+    { name: 'Laporan Keuangan', path: '/admin/laporan-keuangan' },
     { name: 'Pengaturan', path: '/admin/pengaturan' },
   ]
 
@@ -26,15 +27,15 @@ export default function NavbarAdmin() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-4">
             <div className="flex-shrink-0 flex items-center">
               <img src="/logo.png" alt="Logo SIREKO" className="h-12 w-auto object-contain" />
             </div>
-            <div className="hidden md:flex space-x-4">
+            <div className="hidden md:flex space-x-1 lg:space-x-2">
               {navLinks.map((link) => {
                 const isActive = pathname.startsWith(link.path)
                 return (
-                  <Link key={link.name} href={link.path} className={`px-3 py-2 rounded-md text-sm font-bold transition-colors ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+                  <Link key={link.name} href={link.path} className={`px-3 py-2 rounded-md text-sm font-bold transition-colors whitespace-nowrap ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
                     {link.name}
                   </Link>
                 )
@@ -42,7 +43,7 @@ export default function NavbarAdmin() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center ml-2 sm:ml-6 pl-2 sm:pl-6 border-l border-slate-200">
             <div className="flex items-center gap-3">
               <span className="text-sm font-bold text-slate-600 hidden lg:block">Dinas Koperasi</span>
               <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-red-600 transition-colors" title="Keluar">

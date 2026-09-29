@@ -43,6 +43,7 @@ export default function NavbarKoperasi() {
     { name: 'Dashboard', path: '/koperasi/dashboard' },
     { name: 'Keragaan', path: '/koperasi/keragaan' },
     { name: 'Kesehatan', path: '/koperasi/kesehatan' },
+    { name: 'Laporan Keuangan', path: '/koperasi/laporan-keuangan' },
     { name: 'Pengaturan Akun', path: '/koperasi/pengaturan' },
   ]
 

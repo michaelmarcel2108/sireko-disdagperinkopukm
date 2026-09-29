@@ -22,6 +22,11 @@ export default function PengaturanAdmin() {
   const [fileTemplate, setFileTemplate] = useState<File | null>(null)
   const [isUploadingTemplate, setIsUploadingTemplate] = useState(false)
 
+  // State Form Template Umum
+  const [jenisTemplateUmum, setJenisTemplateUmum] = useState('Template_Laporan_Keuangan.xlsx')
+  const [fileTemplateUmum, setFileTemplateUmum] = useState<File | null>(null)
+  const [isUploadingUmum, setIsUploadingUmum] = useState(false)
+
   useEffect(() => {
     checkAdmin()
   }, [])
@@ -107,6 +112,45 @@ export default function PengaturanAdmin() {
       toast.error("Gagal mengunggah template: " + err.message)
     } finally {
       setIsUploadingTemplate(false)
+    }
+  }
+
+  const handleUploadTemplateUmum = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!fileTemplateUmum) {
+      toast.error("Pilih file template terlebih dahulu!")
+      return
+    }
+
+    setIsUploadingUmum(true)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', fileTemplateUmum)
+      
+      // Because users might upload pdf or docx, let's keep the extension from the dropdown value as the expected standard,
+      // but if the uploaded file has a different extension, we might want to replace it.
+      // However, the dropdown values have extensions hardcoded. We will just use the hardcoded filename.
+      const filename = jenisTemplateUmum
+      formData.append('filename', filename)
+
+      const response = await fetch('/api/upload-template', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const result = await response.json()
+      if (!response.ok) {
+        throw new Error(result.error || 'Gagal mengunggah template.')
+      }
+
+      toast.success(`Template ${filename} berhasil diunggah!`)
+      setFileTemplateUmum(null)
+    } catch (err: any) {
+      console.error(err)
+      toast.error("Gagal mengunggah template: " + err.message)
+    } finally {
+      setIsUploadingUmum(false)
     }
   }
 
@@ -209,7 +253,7 @@ export default function PengaturanAdmin() {
                   <option value="Koperasi_Produsen">Koperasi Produsen</option>
                   <option value="Koperasi_Pemasaran">Koperasi Pemasaran</option>
                   <option value="Koperasi_Jasa">Koperasi Jasa</option>
-                  <option value="Koperasi_Serba_Usaha">Koperasi Serba Usaha</option>
+                  <option value="Koperasi_Desa_Kelurahan_Merah_Putih">Koperasi Desa/Kelurahan Merah Putih</option>
                 </select>
               </div>
             </div>
@@ -231,6 +275,46 @@ export default function PengaturanAdmin() {
                 className="w-full sm:w-auto px-8 py-2.5 bg-teal-600 text-white font-bold rounded-lg shadow hover:bg-teal-700 disabled:bg-slate-400 transition-colors"
               >
                 {isUploadingTemplate ? 'Mengunggah...' : 'Upload & Perbarui Template'}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* SECTION 3: UPLOAD TEMPLATE UMUM */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <h2 className="text-lg font-bold text-slate-900 mb-2">Upload Template Umum</h2>
+          <p className="text-sm text-slate-600 mb-6 font-medium">
+            Unggah dan perbarui template umum seperti Laporan Keuangan, Keragaan CSV, Surat Pernyataan Verifikasi Mandiri, atau Lampiran RAT.
+          </p>
+
+          <form onSubmit={handleUploadTemplateUmum} className="space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1">Pilih Jenis Template:</label>
+              <select value={jenisTemplateUmum} onChange={(e) => setJenisTemplateUmum(e.target.value)} className="w-full rounded-md border border-slate-300 p-2.5 bg-slate-50 text-slate-900 font-medium focus:border-indigo-500">
+                <option value="Template_Laporan_Keuangan.xlsx">Template Laporan Keuangan (.xlsx/.xls)</option>
+                <option value="Template_Laporan_Keragaan.csv">Template Laporan Keragaan (.csv)</option>
+                <option value="Template_Surat_Pernyataan_Verifikasi.docx">Template Surat Pernyataan Verifikasi Mandiri (.docx/.pdf)</option>
+                <option value="Template_Lampiran_RAT.docx">Template Lampiran Bahan-Bahan Ringkas RAT (.docx/.pdf)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1">Pilih File</label>
+              <input 
+                type="file" 
+                accept=".xlsx, .xls, .csv, .docx, .pdf"
+                onChange={(e) => setFileTemplateUmum(e.target.files?.[0] || null)}
+                className="w-full text-sm text-slate-800 p-2 border border-slate-300 rounded-md bg-slate-50 shadow-sm focus:border-indigo-500 focus:bg-white"
+              />
+            </div>
+
+            <div className="pt-2">
+              <button 
+                type="submit" 
+                disabled={isUploadingUmum || !fileTemplateUmum}
+                className="w-full sm:w-auto px-8 py-2.5 bg-indigo-600 text-white font-bold rounded-lg shadow hover:bg-indigo-700 disabled:bg-slate-400 transition-colors"
+              >
+                {isUploadingUmum ? 'Mengunggah...' : 'Upload & Perbarui Template Umum'}
               </button>
             </div>
           </form>

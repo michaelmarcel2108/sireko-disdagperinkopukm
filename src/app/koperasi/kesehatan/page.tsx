@@ -10,6 +10,7 @@ export default function KesehatanKoperasi() {
   const [profil, setProfil] = useState<any>(null)
   const [dokumenList, setDokumenList] = useState<any[]>([])
   const [statusUmum, setStatusUmum] = useState('merah')
+  const [isLaporanKeuanganValid, setIsLaporanKeuanganValid] = useState(false)
   
   // State untuk Kertas Kerja
   const [kategoriKUK, setKategoriKUK] = useState('KUK1_2')
@@ -50,20 +51,30 @@ export default function KesehatanKoperasi() {
   }
 
   const fetchDokumen = async (id: string) => {
-    const { data, error } = await supabase.from('dokumen_kesehatan').select('*').eq('koperasi_id', id).order('uploaded_at', { ascending: false })
-    if (error) {
-      console.error("Gagal ambil dokumen:", error)
+    // 1. Ambil dokumen kesehatan
+    const { data: kesData, error: kesError } = await supabase.from('dokumen_kesehatan').select('*').eq('koperasi_id', id).order('uploaded_at', { ascending: false })
+    if (kesError) {
+      console.error("Gagal ambil dokumen kesehatan:", kesError)
       return
     }
     
-    if (data) {
-      setDokumenList(data)
+    // 2. Ambil dokumen laporan keuangan dari dokumen_keragaan
+    const { data: lkData, error: lkError } = await supabase.from('dokumen_keragaan').select('*').eq('koperasi_id', id).like('file_path', '%laporan_keuangan%')
+    if (lkError) {
+      console.error("Gagal ambil laporan keuangan:", lkError)
+    }
+
+    if (kesData) {
+      setDokumenList(kesData)
+      
+      const distinctYears = new Set((lkData || []).map((d: any) => d.periode_laporan))
+      setIsLaporanKeuanganValid(distinctYears.size >= 2)
       
       // Kalkulasi Status Kesehatan Umum
-      if (data.length === 0) {
+      if (kesData.length === 0) {
         setStatusUmum('merah')
       } else {
-        const statuses = data.map(d => d.status_indikator)
+        const statuses = kesData.map((d: any) => d.status_indikator)
         if (statuses.includes('merah')) setStatusUmum('merah')
         else if (statuses.includes('biru')) setStatusUmum('biru')
         else setStatusUmum('hijau')
@@ -179,7 +190,14 @@ export default function KesehatanKoperasi() {
             <h2 className="text-lg font-bold text-slate-900 mb-2">1. Kertas Kerja Verifikasi Mandiri</h2>
             <p className="text-sm text-slate-600 mb-5 font-medium">Unduh template yang sesuai, isi dengan lengkap, dan unggah kembali dalam format Excel (.xlsx / .xls).</p>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {!isLaporanKeuanganValid && (
+              <div className="mb-6 p-4 bg-red-50 text-red-800 border border-red-200 rounded-lg">
+                <p className="font-bold">⚠️ Perhatian: Anda wajib mengunggah Laporan Keuangan untuk 2 tahun terakhir sebelum dapat mengisi Penilaian Kesehatan ini.</p>
+                <p className="text-sm mt-1">Silakan menuju menu <strong>Laporan Keuangan</strong> untuk melengkapinya.</p>
+              </div>
+            )}
+            
+            <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${!isLaporanKeuanganValid ? 'opacity-50 pointer-events-none' : ''}`}>
               {/* Kiri: Unduh Template */}
               <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-between">
                 <div>
@@ -209,7 +227,7 @@ export default function KesehatanKoperasi() {
                         <option value="Koperasi_Produsen">Koperasi Produsen</option>
                         <option value="Koperasi_Pemasaran">Koperasi Pemasaran</option>
                         <option value="Koperasi_Jasa">Koperasi Jasa</option>
-                        <option value="Koperasi_Serba_Usaha">Koperasi Serba Usaha</option>
+                        <option value="Koperasi_Desa_Kelurahan_Merah_Putih">Koperasi Desa/Kelurahan Merah Putih</option>
                       </select>
                     </div>
                   </div>
@@ -254,10 +272,36 @@ export default function KesehatanKoperasi() {
 
         {/* 3. BOX 2: SURAT PERNYATAAN VERIFIKASI MANDIRI */}
         <div className="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-200 mt-6">
-            <h2 className="text-lg font-bold text-slate-900 mb-2">2. Surat Pernyataan Verifikasi Mandiri</h2>
-            <p className="text-sm text-slate-600 mb-5 font-medium">Unggah Surat Pernyataan Verifikasi Mandiri (Excel / PDF).</p>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-5 gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 mb-1">2. Surat Pernyataan Verifikasi Mandiri</h2>
+                <p className="text-sm text-slate-600 font-medium">Unggah Surat Pernyataan Verifikasi Mandiri (Excel / PDF).</p>
+              </div>
+              <button 
+                type="button"
+                onClick={async () => {
+                  try {
+                    const { data, error } = await supabase.storage.from('berkas_sireko').download('templates/Template_Surat_Pernyataan_Verifikasi.docx')
+                    if (error) throw error
+                    const url = URL.createObjectURL(data)
+                    const link = document.createElement('a')
+                    link.href = url
+                    link.setAttribute('download', 'Template_Surat_Pernyataan_Verifikasi.docx')
+                    document.body.appendChild(link)
+                    link.click()
+                    link.remove()
+                    toast.success("Template berhasil diunduh!")
+                  } catch (err: any) {
+                    toast.error("Gagal mengunduh template: " + err.message)
+                  }
+                }}
+                className={`flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg text-sm font-bold shadow-sm hover:bg-indigo-100 transition-colors ${!isLaporanKeuanganValid ? 'opacity-50 pointer-events-none' : ''}`}
+              >
+                Unduh Template
+              </button>
+            </div>
             
-            <form onSubmit={(e) => handleUpload(e, 'surat_pernyataan', fileSurat, tanggalSurat, periodeSurat, setFileSurat)} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <form onSubmit={(e) => handleUpload(e, 'surat_pernyataan', fileSurat, tanggalSurat, periodeSurat, setFileSurat)} className={`grid grid-cols-1 md:grid-cols-4 gap-4 items-end ${!isLaporanKeuanganValid ? 'opacity-50 pointer-events-none' : ''}`}>
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-1">Tanggal Input:</label>
                 <input type="date" value={tanggalSurat} max={new Date().toISOString().split('T')[0]} onChange={(e) => setTanggalSurat(e.target.value)} className="w-full rounded-md border border-slate-300 p-2 bg-white text-slate-900 font-medium shadow-sm focus:border-indigo-500" />

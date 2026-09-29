@@ -62,8 +62,7 @@ export default function KeragaanKoperasi() {
             setFormData({ 
               nobh: pData.nomor_badan_hukum, slug: pData.slug, nmkop: pData.nama_koperasi,
               ang_laki: 0, ang_wanita: 0, kary_laki: 0, kary_wanita: 0, mgr_laki: 0, mgr_wanita: 0,
-              asset: 0, shu: 0, volusaha: 0, modalsendiri: 0, modalluar: 0, tahun_laporan: new Date().getFullYear(),
-              tanggal_laporan: new Date().toISOString().split('T')[0]
+              tanggal_laporan: new Date().toISOString().split('T')[0],
             })
           }
         }
@@ -107,20 +106,23 @@ export default function KeragaanKoperasi() {
   }, [filterBulan, filterTahun])
 
 
-  const handleDownloadTemplate = () => {
-    const headers = ["ang_laki", "ang_wanita", "kary_laki", "kary_wanita", "mgr_laki", "mgr_wanita", "asset", "shu", "volusaha", "modalsendiri", "modalluar", "tahun_laporan"]
-    const sampleData = ["10", "15", "5", "8", "1", "2", "150000000", "25000000", "500000000", "100000000", "50000000", new Date().getFullYear().toString()]
-    const csvContent = headers.join(",") + "\n" + sampleData.join(",")
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.setAttribute("href", url)
-    link.setAttribute("download", "Template_Laporan_Keragaan.csv")
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    toast.success("Template CSV berhasil diunduh!")
+  const handleDownloadTemplate = async () => {
+    try {
+      const { data, error } = await supabase.storage.from('berkas_sireko').download('templates/Template_Laporan_Keragaan.csv')
+      
+      if (error) throw error
+
+      const url = URL.createObjectURL(data)
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', 'Template_Laporan_Keragaan.csv')
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      toast.success("Template CSV berhasil diunduh!")
+    } catch (err: any) {
+      toast.error("Gagal mengunduh template: " + err.message)
+    }
   }
 
   const handleSaveManual = async () => {
@@ -144,10 +146,7 @@ export default function KeragaanKoperasi() {
         tanggal_rat: formData.tanggal_rat || null,
         ang_laki: parseNum(formData.ang_laki), ang_wanita: parseNum(formData.ang_wanita),
         kary_laki: parseNum(formData.kary_laki), kary_wanita: parseNum(formData.kary_wanita),
-        mgr_laki: parseNum(formData.mgr_laki), mgr_wanita: parseNum(formData.mgr_wanita),
-        asset: parseNum(formData.asset), shu: parseNum(formData.shu), volusaha: parseNum(formData.volusaha),
-        modalsendiri: parseNum(formData.modalsendiri), modalluar: parseNum(formData.modalluar),
-        tahun_laporan: parseNum(formData.tahun_laporan) || new Date().getFullYear()
+        mgr_laki: parseNum(formData.mgr_laki), mgr_wanita: parseNum(formData.mgr_wanita)
       }
 
       const { error } = await supabase.from('data_keragaan_metrik').insert(payload)
@@ -325,72 +324,6 @@ export default function KeragaanKoperasi() {
                 </table>
               </div>
             </div>
-
-            {/* TABEL 2: DATA KEUANGAN */}
-            <div className="border border-slate-200 rounded-lg overflow-hidden">
-              <div className="bg-slate-100 px-4 py-3 border-b border-slate-200">
-                <h3 className="font-bold text-slate-800">Data Keuangan (Rupiah)</h3>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm text-left">
-                  <thead className="bg-slate-50 text-slate-600">
-                    <tr>
-                      <th className="px-4 py-3 w-1/3">Indikator Keuangan</th>
-                      <th className="px-4 py-3 w-2/3">Nilai dalam Rupiah (Rp)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white">
-                    <tr>
-                      <td className="px-4 py-3 font-semibold text-slate-800">Total Aset</td>
-                      <td className="px-4 py-3">{isAddingNew ? <input type="number" min="0" value={formData.asset || ''} onChange={(e) => handleInputChange('asset', e.target.value)} placeholder="Contoh: 150000000" className="border p-2 w-full max-w-md rounded focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-slate-50" /> : <span className="font-medium text-slate-700">{formatRp(metrikData?.asset)}</span>}</td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-3 font-semibold text-slate-800">Sisa Hasil Usaha (SHU)</td>
-                      <td className="px-4 py-3">{isAddingNew ? <input type="number" value={formData.shu || ''} onChange={(e) => handleInputChange('shu', e.target.value)} placeholder="Contoh: 25000000" className="border p-2 w-full max-w-md rounded focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-slate-50" /> : <span className="font-bold text-green-600">{formatRp(metrikData?.shu)}</span>}</td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-3 font-semibold text-slate-800">Volume Usaha</td>
-                      <td className="px-4 py-3">{isAddingNew ? <input type="number" min="0" value={formData.volusaha || ''} onChange={(e) => handleInputChange('volusaha', e.target.value)} placeholder="Contoh: 50000000" className="border p-2 w-full max-w-md rounded focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-slate-50" /> : <span className="font-medium text-slate-700">{formatRp(metrikData?.volusaha)}</span>}</td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-3 font-semibold text-slate-800">Modal Sendiri</td>
-                      <td className="px-4 py-3">{isAddingNew ? <input type="number" min="0" value={formData.modalsendiri || ''} onChange={(e) => handleInputChange('modalsendiri', e.target.value)} className="border p-2 w-full max-w-md rounded focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-slate-50" /> : <span className="font-medium text-slate-700">{formatRp(metrikData?.modalsendiri)}</span>}</td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-3 font-semibold text-slate-800">Modal Luar</td>
-                      <td className="px-4 py-3">{isAddingNew ? <input type="number" min="0" value={formData.modalluar || ''} onChange={(e) => handleInputChange('modalluar', e.target.value)} className="border p-2 w-full max-w-md rounded focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-slate-50" /> : <span className="font-medium text-slate-700">{formatRp(metrikData?.modalluar)}</span>}</td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-3 font-semibold text-slate-800">Pelaksanaan RAT</td>
-                      <td className="px-4 py-3">
-                        {isAddingNew ? (
-                          <div className="flex flex-wrap gap-2 items-center">
-                            <select 
-                              value={formData.status_rat || 'belum'} 
-                              onChange={(e) => handleInputChange('status_rat', e.target.value)} 
-                              className="border p-2 rounded focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-slate-50"
-                            >
-                              <option value="belum">Belum Dilaksanakan</option>
-                              <option value="sudah">Sudah Dilaksanakan</option>
-                            </select>
-                            {formData.status_rat === 'sudah' && (
-                              <input type="date" value={formData.tanggal_rat || ''} onChange={(e) => handleInputChange('tanggal_rat', e.target.value)} className="border p-2 rounded focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-slate-50" />
-                            )}
-                          </div>
-                        ) : (
-                          <span className="font-medium text-slate-700">
-                            {metrikData?.status_rat === 'sudah' 
-                              ? `Sudah (Tgl: ${formatDateIndo(metrikData.tanggal_rat)})` 
-                              : 'Belum Dilaksanakan'}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
           </div>
         </div>
 
@@ -437,10 +370,10 @@ export default function KeragaanKoperasi() {
                       <p className="font-black text-slate-900 text-lg">Laporan {formatDateIndo(metrik.tanggal_laporan || metrik.created_at)}</p>
                       <div className="mt-3 space-y-1.5">
                         <p className="text-sm font-medium text-slate-600 flex justify-between">
-                          <span>Total Aset:</span> <span className="font-bold text-slate-900">{formatRp(metrik.asset)}</span>
+                          <span>Total Anggota:</span> <span className="font-bold text-slate-900">{Number(metrik.ang_laki || 0) + Number(metrik.ang_wanita || 0)} Orang</span>
                         </p>
                         <p className="text-sm font-medium text-slate-600 flex justify-between">
-                          <span>SHU:</span> <span className="font-bold text-green-600">{formatRp(metrik.shu)}</span>
+                          <span>Total Karyawan:</span> <span className="font-bold text-slate-900">{Number(metrik.kary_laki || 0) + Number(metrik.kary_wanita || 0)} Orang</span>
                         </p>
                       </div>
                       
@@ -466,10 +399,6 @@ export default function KeragaanKoperasi() {
                           <div className="flex justify-between text-slate-600"><span>Manajer (L):</span> <span className="font-semibold text-slate-900">{metrik.mgr_laki}</span></div>
                           <div className="flex justify-between text-slate-600"><span>Manajer (P):</span> <span className="font-semibold text-slate-900">{metrik.mgr_wanita}</span></div>
                           
-                          <div className="col-span-2 pt-2 pb-2 border-b border-slate-100 font-bold text-slate-800 mt-2">Data Keuangan</div>
-                          <div className="col-span-2 flex justify-between text-slate-600"><span>Volume Usaha:</span> <span className="font-semibold text-slate-900">{formatRp(metrik.volusaha)}</span></div>
-                          <div className="col-span-2 flex justify-between text-slate-600"><span>Modal Sendiri:</span> <span className="font-semibold text-slate-900">{formatRp(metrik.modalsendiri)}</span></div>
-                          <div className="col-span-2 flex justify-between text-slate-600"><span>Modal Luar:</span> <span className="font-semibold text-slate-900">{formatRp(metrik.modalluar)}</span></div>
                         </div>
                       </div>
                     )}
@@ -542,9 +471,33 @@ export default function KeragaanKoperasi() {
 
         {/* 4. UPLOAD LAMPIRAN RAT */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <div className="mb-4">
-              <h2 className="text-lg font-bold text-slate-900 mb-1">Unggah Lampiran Bahan-Bahan Ringkas RAT</h2>
-              <p className="text-sm text-slate-600 font-medium">Unggah file pendukung seperti presentasi RAT, risalah, atau laporan ringkas (Format PDF / ZIP).</p>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 mb-1">Unggah Lampiran Bahan-Bahan Ringkas RAT</h2>
+                <p className="text-sm text-slate-600 font-medium">Unggah file pendukung seperti presentasi RAT, risalah, atau laporan ringkas (Format PDF / ZIP / DOCX).</p>
+              </div>
+              <button 
+                type="button"
+                onClick={async () => {
+                  try {
+                    const { data, error } = await supabase.storage.from('berkas_sireko').download('templates/Template_Lampiran_RAT.docx')
+                    if (error) throw error
+                    const url = URL.createObjectURL(data)
+                    const link = document.createElement('a')
+                    link.href = url
+                    link.setAttribute('download', 'Template_Lampiran_RAT.docx')
+                    document.body.appendChild(link)
+                    link.click()
+                    link.remove()
+                    toast.success("Template berhasil diunduh!")
+                  } catch (err: any) {
+                    toast.error("Gagal mengunduh template: " + err.message)
+                  }
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg text-sm font-bold shadow-sm hover:bg-indigo-100 transition-colors"
+              >
+                Unduh Template
+              </button>
             </div>
             <form 
               onSubmit={async (e) => {
@@ -559,7 +512,7 @@ export default function KeragaanKoperasi() {
                   if (uploadError) throw new Error(uploadError.message)
                   const { data: publicUrlData } = supabase.storage.from('berkas_sireko').getPublicUrl(`keragaan/${fileName}`)
                   const { error: dbError } = await supabase.from('dokumen_keragaan').insert({ 
-                    koperasi_id: profil.id, jenis_laporan: 'Lampiran RAT', periode_laporan: 'tahunan',
+                    koperasi_id: profil.id, jenis_laporan: 'tahunan', periode_laporan: 'tahunan',
                     file_path: publicUrlData.publicUrl, status_indikator: 'merah' 
                   })
                   if (dbError) throw new Error(dbError.message)
@@ -570,11 +523,50 @@ export default function KeragaanKoperasi() {
               className="flex gap-4 items-end flex-wrap bg-slate-50 p-4 rounded-lg border border-slate-100"
             >
                 <div className="flex-1 min-w-[200px]">
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Pilih File (PDF/ZIP):</label>
-                  <input name="rat_file" type="file" accept=".pdf,.zip,.rar" className="w-full text-sm text-slate-800 p-1.5 border border-slate-300 rounded bg-white shadow-sm outline-none focus:border-indigo-500" />
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Pilih File (PDF/ZIP/DOCX):</label>
+                  <input name="rat_file" type="file" accept=".pdf,.zip,.rar,.docx" className="w-full text-sm text-slate-800 p-1.5 border border-slate-300 rounded bg-white shadow-sm outline-none focus:border-indigo-500" />
                 </div>
                 <button type="submit" disabled={isUploading} className="px-6 py-2 bg-indigo-600 text-white font-bold rounded shadow-sm hover:bg-indigo-700 disabled:bg-slate-400 transition-colors h-[42px]">
                   {isUploading ? "Mengunggah..." : "Upload Lampiran RAT"}
+                </button>
+            </form>
+        </div>
+
+        {/* 4.5. UPLOAD STRUKTUR PENGURUS */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mt-6">
+            <div className="mb-4">
+              <h2 className="text-lg font-bold text-slate-900 mb-1">Unggah Struktur Pengurus</h2>
+              <p className="text-sm text-slate-600 font-medium">Unggah file dokumen/gambar struktur kepengurusan koperasi Anda (Format PDF / JPG / PNG).</p>
+            </div>
+            <form 
+              onSubmit={async (e) => {
+                e.preventDefault()
+                const strukturFile = (e.target as any).struktur_file.files[0]
+                if (!strukturFile) { toast.error("Pilih file struktur pengurus terlebih dahulu!"); return }
+                const toastId = toast.loading("Mengunggah struktur pengurus...")
+                setIsUploading(true)
+                try {
+                  const fileName = `${profil.id}/struktur_pengurus-${Date.now()}.${strukturFile.name.split('.').pop()}`
+                  const { error: uploadError } = await supabase.storage.from('berkas_sireko').upload(`keragaan/${fileName}`, strukturFile)
+                  if (uploadError) throw new Error(uploadError.message)
+                  const { data: publicUrlData } = supabase.storage.from('berkas_sireko').getPublicUrl(`keragaan/${fileName}`)
+                  const { error: dbError } = await supabase.from('dokumen_keragaan').insert({ 
+                    koperasi_id: profil.id, jenis_laporan: 'tahunan', periode_laporan: 'tahunan',
+                    file_path: publicUrlData.publicUrl, status_indikator: 'biru' 
+                  })
+                  if (dbError) throw new Error(dbError.message)
+                  toast.success('Struktur Pengurus berhasil diunggah!', { id: toastId })
+                  checkUserAndFetchData()
+                } catch (error: any) { toast.error(error.message, { id: toastId }) } finally { setIsUploading(false); (e.target as HTMLFormElement).reset() }
+              }}
+              className="flex gap-4 items-end flex-wrap bg-slate-50 p-4 rounded-lg border border-slate-100"
+            >
+                <div className="flex-1 min-w-[200px]">
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Pilih File (PDF/Image):</label>
+                  <input name="struktur_file" type="file" accept=".pdf,.png,.jpg,.jpeg" className="w-full text-sm text-slate-800 p-1.5 border border-slate-300 rounded bg-white shadow-sm outline-none focus:border-indigo-500" />
+                </div>
+                <button type="submit" disabled={isUploading} className="px-6 py-2 bg-indigo-600 text-white font-bold rounded shadow-sm hover:bg-indigo-700 disabled:bg-slate-400 transition-colors h-[42px]">
+                  {isUploading ? "Mengunggah..." : "Upload Struktur"}
                 </button>
             </form>
         </div>
@@ -587,7 +579,14 @@ export default function KeragaanKoperasi() {
               {dokumenList.map((doc: any) => (
                 <div key={doc.id} className="flex justify-between items-center p-4 border border-slate-200 rounded-lg bg-slate-50 hover:border-indigo-200 transition-colors">
                   <div>
-                    <p className="font-bold text-slate-900 capitalize">File Laporan {doc.jenis_laporan.replace('_', ' ')}</p>
+                    <p className="font-bold text-slate-900 capitalize">
+                      File {
+                        doc.file_path.includes('struktur_pengurus') ? 'Struktur Pengurus' :
+                        doc.file_path.includes('lampiran_rat') ? 'Lampiran RAT' :
+                        doc.file_path.includes('laporan_keuangan') ? 'Laporan Keuangan' :
+                        'Laporan ' + doc.jenis_laporan.replace('_', ' ')
+                      }
+                    </p>
                     <p className="text-xs font-medium text-slate-500 mt-1">Diunggah pada: {new Date(doc.uploaded_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                   </div>
                   <div className="flex items-center gap-4">

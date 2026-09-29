@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/utils/supabase'
 import NavbarAdmin from '@/components/NavbarAdmin'
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts'
 
 export default function AdminDashboard() {
@@ -190,23 +190,23 @@ export default function AdminDashboard() {
         {/* KURVA AGREGAT KERAGAAN SEMUA KOPERASI */}
         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
           <div className="mb-6">
-            <h2 className="text-lg font-bold text-slate-900">Kurva Pertumbuhan Keragaan</h2>
-            <p className="text-sm text-slate-500">Grafik ini merupakan gabungan total dari Aset, SHU, dan Volume Usaha dari seluruh koperasi yang melaporkan data ke SIREKO.</p>
+            <h2 className="text-lg font-bold text-slate-900">Grafik Keuangan dan Keragaan</h2>
+            <p className="text-sm text-slate-500">Diagram batang ini merupakan gabungan total dari Aset, SHU, dan Volume Usaha dari seluruh koperasi.</p>
           </div>
 
           <div className="h-80 w-full">
             {adminChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={adminChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                <BarChart data={adminChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="periode" tick={{ fontSize: 12, fill: '#64748b' }} tickMargin={10} />
                   <YAxis tick={{ fontSize: 12, fill: '#64748b' }} />
                   <Tooltip formatter={(value: any) => [`Rp ${Number(value || 0).toFixed(2)} Juta`, '']} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                   <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                  <Line type="monotone" dataKey="Aset" stroke="#4f46e5" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} name="Total Aset Gabungan" />
-                  <Line type="monotone" dataKey="VolumeUsaha" stroke="#0ea5e9" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} name="Total Vol. Usaha Gabungan" />
-                  <Line type="monotone" dataKey="SHU" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} name="Total SHU Gabungan" />
-                </LineChart>
+                  <Bar dataKey="Aset" fill="#4f46e5" name="Total Aset Gabungan" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="VolumeUsaha" fill="#0ea5e9" name="Total Vol. Usaha Gabungan" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="SHU" fill="#10b981" name="Total SHU Gabungan" radius={[4, 4, 0, 0]} />
+                </BarChart>
               </ResponsiveContainer>
             ) : (
               <div className="h-full flex items-center justify-center text-slate-400 text-sm italic border-2 border-dashed border-slate-200 rounded-lg">
