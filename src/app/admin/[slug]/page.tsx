@@ -3,55 +3,65 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/utils/supabase'
-import NavbarAdmin from '@/components/NavbarAdmin'
-import toast from 'react-hot-toast'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
-export default function AdminDetailKoperasi() {
+export default function AdminKoperasiSummary() {
   const router = useRouter()
   const params = useParams()
   const [loading, setLoading] = useState(true)
   
   const [profil, setProfil] = useState<any>(null)
-  const [keragaanList, setKeragaanList] = useState<any[]>([])
-  const [kesehatanList, setKesehatanList] = useState<any[]>([])
-  const [verifData, setVerifData] = useState<any>(null)
-  const [metrikData, setMetrikData] = useState<any>(null)
-
-  // State Form Verifikasi
-  const [statusVerif, setStatusVerif] = useState('belum_diupload')
-  const [catatan, setCatatan] = useState('')
-  const [suratFile, setSuratFile] = useState<File | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isObservasi, setIsObservasi] = useState(false)
+  
+  const [chartKeragaan, setChartKeragaan] = useState<any[]>([])
+  const [chartKesehatan, setChartKesehatan] = useState<any[]>([])
+  const [chartKeuangan, setChartKeuangan] = useState<any[]>([])
 
   useEffect(() => {
-    if (params?.slug) fetchKoperasiDetail(params.slug as string)
+    if (params?.slug) fetchKoperasiSummary(params.slug as string)
   }, [params])
 
-  const fetchKoperasiDetail = async (slug: string) => {
+  const processChartData = (docs: any[]) => {
+    const grouped = docs.reduce((acc, doc) => {
+      const year = new Date(doc.uploaded_at).getFullYear().toString()
+      let period = (doc.periode_laporan || 'Lainnya').toLowerCase()
+      // Normalize period names
+      if (period.includes('tri') || period.includes('trimester')) period = 'Triwulan'
+      else if (period.includes('semester')) period = 'Semesteran'
+      else if (period.includes('bulan')) period = 'Bulanan'
+      else if (period.includes('tahun')) period = 'Tahunan'
+      else period = 'Lainnya'
+      
+      if (!acc[year]) acc[year] = { year, Bulanan: 0, Triwulan: 0, Semesteran: 0, Tahunan: 0, Lainnya: 0 }
+      acc[year][period] = (acc[year][period] || 0) + 1
+      return acc
+    }, {} as any)
+    
+    return Object.values(grouped).sort((a: any, b: any) => a.year.localeCompare(b.year))
+  }
+
+  const fetchKoperasiSummary = async (slug: string) => {
     try {
-      // 1. Ambil Profil Koperasi
       const { data: pData } = await supabase.from('profil_koperasi').select('*').eq('slug', slug).single()
       if (!pData) { router.push('/admin/koperasi'); return; }
       setProfil(pData)
 
-      // 2. Ambil Dokumen Keragaan & Kesehatan
-      const { data: kerData } = await supabase.from('dokumen_keragaan').select('*').eq('koperasi_id', pData.id).order('uploaded_at', { ascending: false })
-      const { data: kesData } = await supabase.from('dokumen_kesehatan').select('*').eq('koperasi_id', pData.id).order('uploaded_at', { ascending: false })
-      if (kerData) setKeragaanList(kerData)
-      if (kesData) setKesehatanList(kesData)
-
-      // 3. Ambil Status Verifikasi Terakhir
-      const { data: vData } = await supabase.from('verifikasi_dinas').select('*').eq('koperasi_id', pData.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
-      if (vData) {
-        setVerifData(vData)
-        setStatusVerif(vData.status)
-        setCatatan(vData.catatan || '')
+      // 1. Dokumen Keragaan & Keuangan
+      const { data: kerData } = await supabase.from('dokumen_keragaan').select('*').eq('koperasi_id', pData.id)
+      
+      if (kerData) {
+        // Asumsi: yang mengandung 'laporan_keuangan' di file_path adalah Keuangan, sisanya Keragaan
+        const docsKeuangan = kerData.filter(d => d.file_path && d.file_path.toLowerCase().includes('laporan_keuangan'))
+        const docsKeragaan = kerData.filter(d => !d.file_path || !d.file_path.toLowerCase().includes('laporan_keuangan'))
+        
+        setChartKeragaan(processChartData(docsKeragaan))
+        setChartKeuangan(processChartData(docsKeuangan))
       }
 
-      // 4. Ambil Data Metrik Keragaan Lengkap
-      const { data: mData } = await supabase.from('data_keragaan_metrik').select('*').eq('slug', slug).single()
-      if (mData) setMetrikData(mData)
+      // 2. Dokumen Kesehatan
+      const { data: kesData } = await supabase.from('dokumen_kesehatan').select('*').eq('koperasi_id', pData.id)
+      if (kesData) {
+        setChartKesehatan(processChartData(kesData))
+      }
 
     } catch (err) {
       console.error(err)
@@ -60,74 +70,49 @@ export default function AdminDetailKoperasi() {
     }
   }
 
-  const handleVerifikasiSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!profil) return
-    setIsSubmitting(true)
-
-    try {
-      let publicUrl = verifData?.file_path || null
-
-      // Jika Admin mengunggah file Surat baru
-      if (suratFile) {
-        const fileName = `${profil.id}/Surat-Dinas-${Date.now()}.pdf`
-        const { error: uploadError } = await supabase.storage.from('berkas_sireko').upload(`verifikasi/${fileName}`, suratFile)
+  const renderCustomBarChart = (data: any[], title: string, description: string, detailRoute: string) => {
+    return (
+      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex flex-col h-[400px]">
+        <div className="mb-6 flex justify-between items-start gap-2">
+          <div>
+            <h2 className="text-lg font-bold text-slate-800">{title}</h2>
+            <p className="text-sm text-slate-500">{description}</p>
+          </div>
+          <button 
+            onClick={() => router.push(detailRoute)}
+            className="shrink-0 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white text-xs font-bold rounded-lg transition-colors border border-indigo-200"
+          >
+            Lihat Detail
+          </button>
+        </div>
         
-        if (uploadError) throw new Error("Gagal mengunggah file surat ke storage: " + uploadError.message)
-        
-        const { data: urlData } = supabase.storage.from('berkas_sireko').getPublicUrl(`verifikasi/${fileName}`)
-        publicUrl = urlData.publicUrl
-      }
-
-      // Simpan ke tabel verifikasi_dinas
-      const { error } = await supabase.from('verifikasi_dinas').insert({
-        koperasi_id: profil.id,
-        kategori: 'kesehatan',
-        status: statusVerif,
-        catatan: catatan,
-        file_path: publicUrl || '-'
-      })
-
-      if (error) throw error
-      toast.success('Validasi berhasil disimpan!')
-      setSuratFile(null)
-      fetchKoperasiDetail(profil.slug) // Refresh data
-
-    } catch (err: any) {
-      toast.error(err.message)
-    } finally {
-      setIsSubmitting(false)
-    }
+        <div className="flex-1 w-full min-h-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart 
+              data={data.length > 0 ? data : [{ year: new Date().getFullYear().toString(), Bulanan: 0, Triwulan: 0, Semesteran: 0, Tahunan: 0, Lainnya: 0 }]} 
+              margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+              <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
+              <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+              <Tooltip 
+                cursor={{fill: '#f8fafc'}}
+                contentStyle={{borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+              />
+              <Legend iconType="circle" wrapperStyle={{paddingTop: '20px', fontSize: '12px'}} />
+              <Bar dataKey="Bulanan" name="Bulanan" stackId="a" fill="#60a5fa" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="Triwulan" name="Tri Semester" stackId="a" fill="#34d399" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="Semesteran" name="Semesteran" stackId="a" fill="#fbbf24" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="Tahunan" name="Tahunan" stackId="a" fill="#a78bfa" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Lainnya" name="Lainnya" stackId="a" fill="#94a3b8" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    )
   }
 
-  const handleHapusSurat = async () => {
-    if (!verifData?.id) return
-    if (!confirm('Apakah Anda yakin ingin menghapus surat validasi ini?')) return
-    setIsSubmitting(true)
-    try {
-      const { error } = await supabase.from('verifikasi_dinas').update({ file_path: '-' }).eq('id', verifData.id)
-      if (error) throw error
-      toast.success('Surat validasi berhasil dihapus.')
-      fetchKoperasiDetail(profil.slug)
-    } catch (err: any) {
-      toast.error(err.message)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const updateStatusDokumen = async (tabel: string, id: string, statusBaru: string) => {
-    try {
-      const { error } = await supabase.from(tabel).update({ status_indikator: statusBaru }).eq('id', id)
-      if (error) throw error
-      toast.success("Status dokumen diperbarui!")
-      fetchKoperasiDetail(profil.slug)
-    } catch (err: any) {
-      toast.error("Gagal memperbarui status: " + err.message)
-    }
-  }
-
-  if (loading) return <div className="min-h-screen bg-slate-50 p-8 text-center font-bold">Memuat Detail Koperasi...</div>
+  if (loading) return <div className="min-h-screen bg-slate-50 p-8 text-center font-bold">Memuat Ringkasan...</div>
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans antialiased text-slate-900">
@@ -135,229 +120,48 @@ export default function AdminDetailKoperasi() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         
         {/* HEADER PROFIL */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">{profil?.nama_koperasi}</h1>
-            <p className="text-sm text-slate-500 mt-1 font-medium">NBH: {profil?.nomor_badan_hukum || 'Belum diatur'}</p>
+            <div className="flex items-center gap-3 mb-1">
+              <h1 className="text-2xl font-bold text-slate-900">{profil?.nama_koperasi}</h1>
+              <span className="px-2.5 py-1 text-[10px] uppercase tracking-wider font-bold bg-indigo-50 text-indigo-700 rounded-full">
+                Ringkasan Koperasi
+              </span>
+            </div>
+            <p className="text-sm text-slate-500 font-medium">NBH: {profil?.nomor_badan_hukum || 'Belum diatur'}</p>
           </div>
-          <button onClick={() => router.push('/admin/koperasi')} className="text-sm font-bold text-indigo-600 hover:underline">Kembali ke Daftar</button>
+          <button 
+            onClick={() => router.push('/admin/koperasi')} 
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-lg transition-colors"
+          >
+            Kembali ke Daftar
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* STATISTIK CHART */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          {renderCustomBarChart(
+            chartKeragaan, 
+            "Laporan Keragaan", 
+            "Frekuensi pelaporan keragaan berdasarkan klasifikasi tahun dan periode",
+            `/admin/koperasi/keragaan/${profil?.slug}`
+          )}
           
-          {/* KOLOM KIRI: DAFTAR DOKUMEN KOPERASI */}
-          <div className="lg:col-span-2 space-y-6">
-            
-            {/* Data Lengkap Keragaan */}
-            {metrikData && (
-              <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-                <h2 className="text-lg font-bold text-slate-800 mb-1">Data Metrik Keragaan (Tahun {metrikData.tahun_laporan})</h2>
-                <p className="text-sm text-slate-500 mb-4 border-b border-slate-100 pb-2">Ringkasan Laporan Tutup Buku (Sebagai Dasar Analisa)</p>
-                
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    <p className="text-xs text-slate-500 font-medium">Total Anggota</p>
-                    <p className="text-lg font-black text-indigo-700">{metrikData.ang_laki + metrikData.ang_wanita}</p>
-                  </div>
-                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    <p className="text-xs text-slate-500 font-medium">Total Karyawan</p>
-                    <p className="text-lg font-black text-indigo-700">{metrikData.kary_laki + metrikData.kary_wanita}</p>
-                  </div>
-                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    <p className="text-xs text-slate-500 font-medium">Total Manajer</p>
-                    <p className="text-lg font-black text-indigo-700">{metrikData.mgr_laki + metrikData.mgr_wanita}</p>
-                  </div>
-                  
-                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    <p className="text-xs text-slate-500 font-medium">Total Aset</p>
-                    <p className="text-base font-bold text-slate-800">Rp {metrikData.asset?.toLocaleString('id-ID')}</p>
-                  </div>
-                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    <p className="text-xs text-slate-500 font-medium">Volume Usaha</p>
-                    <p className="text-base font-bold text-slate-800">Rp {metrikData.volusaha?.toLocaleString('id-ID')}</p>
-                  </div>
-                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    <p className="text-xs text-slate-500 font-medium">SHU</p>
-                    <p className="text-base font-bold text-emerald-600">Rp {metrikData.shu?.toLocaleString('id-ID')}</p>
-                  </div>
-
-                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    <p className="text-xs text-slate-500 font-medium">Modal Sendiri</p>
-                    <p className="text-base font-bold text-slate-800">Rp {metrikData.modalsendiri?.toLocaleString('id-ID')}</p>
-                  </div>
-                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    <p className="text-xs text-slate-500 font-medium">Modal Luar</p>
-                    <p className="text-base font-bold text-slate-800">Rp {metrikData.modalluar?.toLocaleString('id-ID')}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Dokumen Keragaan */}
-            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-              <h2 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2">Laporan Keragaan (CSV/Metrik)</h2>
-              <div className="space-y-3">
-                {keragaanList.map(doc => (
-                  <div key={doc.id} className="flex flex-col sm:flex-row justify-between sm:items-center p-3 border border-slate-100 bg-slate-50 rounded-lg gap-3">
-                    <div>
-                      <p className="font-bold text-sm text-slate-800 capitalize">Laporan {doc.jenis_laporan?.replace('_', ' ')} <span className="text-xs text-indigo-600 ml-1">({doc.periode_laporan || 'bulanan'})</span></p>
-                      <p className="text-xs text-slate-500">{new Date(doc.uploaded_at).toLocaleDateString('id-ID')}</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <a 
-                        href={doc.file_path} 
-                        target="_blank" 
-                        onClick={() => {
-                          if(doc.status_indikator !== 'hijau') updateStatusDokumen('dokumen_keragaan', doc.id, 'hijau');
-                        }}
-                        className="text-xs font-bold text-indigo-600 hover:underline"
-                      >
-                        Lihat CSV
-                      </a>
-                      <select 
-                        value={doc.status_indikator} 
-                        onChange={(e) => updateStatusDokumen('dokumen_keragaan', doc.id, e.target.value)}
-                        className="text-xs border border-slate-300 rounded p-1 font-bold bg-white"
-                      >
-                        <option value="merah">Belum Dicek</option>
-                        <option value="biru">Diproses</option>
-                        <option value="hijau">Terverifikasi</option>
-                      </select>
-                    </div>
-                  </div>
-                ))}
-                {keragaanList.length === 0 && <p className="text-sm text-slate-400 italic">Belum ada dokumen keragaan.</p>}
-              </div>
-            </div>
-
-            {/* Dokumen Kesehatan */}
-            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-              <h2 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2">Laporan Kesehatan (PDF)</h2>
-              <div className="space-y-3">
-                {kesehatanList.map(doc => (
-                  <div key={doc.id} className="flex flex-col sm:flex-row justify-between sm:items-center p-3 border border-slate-100 bg-slate-50 rounded-lg gap-3">
-                    <div>
-                      <p className="font-bold text-sm text-slate-800 capitalize">{doc.jenis_dokumen?.replace(/_/g, ' ')} <span className="text-xs text-indigo-600 ml-1">({doc.periode_laporan || 'bulanan'})</span></p>
-                      <p className="text-xs text-slate-500">{new Date(doc.uploaded_at).toLocaleDateString('id-ID')}</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <a 
-                        href={doc.file_path} 
-                        target="_blank" 
-                        onClick={() => {
-                          if(doc.status_indikator !== 'hijau') updateStatusDokumen('dokumen_kesehatan', doc.id, 'hijau');
-                        }}
-                        className="text-xs font-bold text-indigo-600 hover:underline"
-                      >
-                        Buka PDF
-                      </a>
-                      <select 
-                        value={doc.status_indikator} 
-                        onChange={(e) => updateStatusDokumen('dokumen_kesehatan', doc.id, e.target.value)}
-                        className="text-xs border border-slate-300 rounded p-1 font-bold bg-white"
-                      >
-                        <option value="merah">Belum Dicek</option>
-                        <option value="biru">Diproses</option>
-                        <option value="hijau">Terverifikasi</option>
-                      </select>
-                    </div>
-                  </div>
-                ))}
-                {kesehatanList.length === 0 && <p className="text-sm text-slate-400 italic">Belum ada dokumen kesehatan.</p>}
-              </div>
-            </div>
-
-          </div>
-
-          {/* KOLOM KANAN: PANEL UPLOAD VALIDASI DINAS */}
-          <div className="lg:col-span-1">
-           <div className="sticky top-24 space-y-6">
-            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-              <h2 className="text-lg font-bold text-slate-900 mb-4">Validasi Dinas</h2>
-              
-              <form onSubmit={handleVerifikasiSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Status Validasi</label>
-                  <select 
-                    value={statusVerif} 
-                    onChange={(e) => setStatusVerif(e.target.value)} 
-                    className="w-full p-2.5 bg-white border border-slate-300 rounded-md font-bold focus:border-indigo-500 shadow-sm"
-                  >
-                    <option value="belum_diupload">Belum Diupload</option>
-                    <option value="proses_verifikasi">Proses Verifikasi</option>
-                    <option value="sudah_validasi">Sudah Validasi</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Catatan Dinas (Opsional)</label>
-                  <textarea 
-                    value={catatan}
-                    onChange={(e) => setCatatan(e.target.value)}
-                    rows={3}
-                    placeholder="Berikan catatan atau instruksi revisi..."
-                    className="w-full p-2 bg-white border border-slate-300 rounded-md text-sm focus:border-indigo-500 shadow-sm"
-                  />
-                </div>
-
-                <div className="border-t border-slate-200 pt-4 mt-2">
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Upload Surat Validasi (.pdf)</label>
-                  <p className="text-xs text-slate-500 mb-2">Unggah surat resmi dari dinas yang menyatakan status koperasi ini.</p>
-                  <input 
-                    type="file" 
-                    accept=".pdf"
-                    onChange={(e) => setSuratFile(e.target.files?.[0] || null)}
-                    className="w-full text-sm text-slate-700 p-1.5 border border-slate-300 rounded bg-white shadow-sm" 
-                  />
-                  
-                  {verifData?.file_path && verifData.file_path !== '-' && !suratFile && (
-                    <div className="flex items-center justify-between mt-3 bg-slate-50 border border-slate-200 p-2 rounded-lg">
-                      <p className="text-xs text-indigo-600 font-bold flex items-center gap-1">
-                        &#10003; Surat sudah diunggah. <a href={verifData.file_path} target="_blank" className="underline hover:text-indigo-800">Lihat File</a>
-                      </p>
-                      <button 
-                        type="button" 
-                        onClick={handleHapusSurat}
-                        disabled={isSubmitting}
-                        className="text-[11px] px-2 py-1 bg-red-100 text-red-600 hover:bg-red-200 font-bold rounded transition-colors disabled:opacity-50"
-                      >
-                        Hapus Surat
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 mt-4">
-                  <input 
-                    type="checkbox" 
-                    id="observasi" 
-                    checked={isObservasi}
-                    onChange={(e) => setIsObservasi(e.target.checked)}
-                    className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
-                  />
-                  <label htmlFor="observasi" className="text-sm font-bold text-slate-700">
-                    Sudah Observasi Lapangan
-                  </label>
-                </div>
-                {statusVerif === 'sudah_validasi' && !isObservasi && (
-                  <p className="text-xs text-red-600 font-bold mt-1">* Status Sudah Validasi memerlukan Observasi Lapangan.</p>
-                )}
-
-                <button 
-                  type="submit" 
-                  disabled={isSubmitting || (statusVerif === 'sudah_validasi' && !isObservasi)}
-                  className="w-full py-2.5 mt-2 bg-indigo-600 text-white font-bold rounded-lg shadow hover:bg-indigo-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors"
-                >
-                  {isSubmitting ? 'Menyimpan...' : 'Simpan Validasi'}
-                </button>
-              </form>
-            </div>
-
-
-           </div>
-          </div>
-
+          {renderCustomBarChart(
+            chartKesehatan, 
+            "Laporan Kesehatan", 
+            "Frekuensi pelaporan kesehatan berdasarkan klasifikasi tahun dan periode",
+            `/admin/koperasi/kesehatan/${profil?.slug}`
+          )}
+          
+          {renderCustomBarChart(
+            chartKeuangan, 
+            "Laporan Keuangan", 
+            "Frekuensi pelaporan keuangan berdasarkan klasifikasi tahun dan periode",
+            `/admin/koperasi/laporan-keuangan/${profil?.slug}`
+          )}
         </div>
+
       </div>
     </div>
   )

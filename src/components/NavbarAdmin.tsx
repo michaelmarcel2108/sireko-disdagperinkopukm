@@ -33,7 +33,19 @@ export default function NavbarAdmin() {
             </div>
             <div className="hidden md:flex space-x-1 lg:space-x-2">
               {navLinks.map((link) => {
-                const isActive = pathname.startsWith(link.path)
+                let isActive = false
+                if (link.path === '/admin/koperasi') {
+                  isActive = pathname.startsWith('/admin/koperasi') && !pathname.includes('/keragaan') && !pathname.includes('/kesehatan') && !pathname.includes('/laporan-keuangan')
+                } else if (link.path === '/admin/keragaan') {
+                  isActive = pathname.startsWith('/admin/keragaan') || pathname.includes('/koperasi/keragaan')
+                } else if (link.path === '/admin/kesehatan') {
+                  isActive = pathname.startsWith('/admin/kesehatan') || pathname.includes('/koperasi/kesehatan')
+                } else if (link.path === '/admin/laporan-keuangan') {
+                  isActive = pathname.startsWith('/admin/laporan-keuangan') || pathname.includes('/koperasi/laporan-keuangan')
+                } else {
+                  isActive = pathname.startsWith(link.path)
+                }
+
                 return (
                   <Link key={link.name} href={link.path} className={`px-3 py-2 rounded-md text-sm font-bold transition-colors whitespace-nowrap ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
                     {link.name}

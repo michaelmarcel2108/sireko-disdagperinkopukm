@@ -173,12 +173,32 @@ export default function AdminDaftarKoperasi() {
                     <td className="px-4 py-4 text-center">{renderBadge(kop.status_kesehatan_computed, 'kesehatan')}</td>
                     <td className="px-4 py-4 text-center">{renderBadge(kop.status_verifikasi, 'verifikasi')}</td>
                     <td className="px-4 py-4 text-right">
-                      <button 
-                        onClick={() => router.push(`/admin/${kop.slug}`)}
-                        className="px-4 py-2 bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-bold rounded hover:bg-indigo-600 hover:text-white transition-colors"
-                      >
-                        Detail & Verifikasi
-                      </button>
+                      <div className="flex justify-end gap-2">
+                        <button 
+                          onClick={() => router.push(`/admin/${kop.slug}`)}
+                          className="px-3 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 text-[11px] font-bold rounded hover:bg-indigo-600 hover:text-white transition-colors"
+                        >
+                          Ringkasan
+                        </button>
+                        <button 
+                          onClick={() => router.push(`/admin/koperasi/keragaan/${kop.slug}`)}
+                          className="px-3 py-1.5 bg-blue-50 border border-blue-200 text-blue-700 text-[11px] font-bold rounded hover:bg-blue-600 hover:text-white transition-colors"
+                        >
+                          Keragaan
+                        </button>
+                        <button 
+                          onClick={() => router.push(`/admin/koperasi/kesehatan/${kop.slug}`)}
+                          className="px-3 py-1.5 bg-green-50 border border-green-200 text-green-700 text-[11px] font-bold rounded hover:bg-green-600 hover:text-white transition-colors"
+                        >
+                          Kesehatan
+                        </button>
+                        <button 
+                          onClick={() => router.push(`/admin/koperasi/laporan-keuangan/${kop.slug}`)}
+                          className="px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-bold rounded hover:bg-amber-600 hover:text-white transition-colors"
+                        >
+                          Keuangan
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

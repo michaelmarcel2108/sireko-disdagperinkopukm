@@ -161,7 +161,7 @@ export default function AdminKesehatan() {
                         <button
                           id={`btn-detail-${kop.id}`}
                           aria-label={`Lihat detail koperasi ${kop.nama_koperasi}`}
-                          onClick={() => router.push(`/admin/${kop.slug}`)}
+                          onClick={() => router.push(`/admin/koperasi/kesehatan/${kop.slug}`)}
                           className="px-4 py-2 bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-bold rounded hover:bg-indigo-600 hover:text-white transition-colors"
                         >
                           Lihat Detail
