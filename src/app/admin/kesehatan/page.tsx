@@ -71,6 +71,25 @@ export default function AdminKesehatan() {
 
   if (loading) return <div className="min-h-screen bg-slate-50 p-8 text-center text-slate-900 font-bold">Memuat Data...</div>
 
+  const filteredKoperasiList = koperasiList
+    .map((kop: any) => {
+      let targetDoc = null;
+      if (filterPeriode === 'semua') {
+        targetDoc = kop.dokumen_kesehatan[0];
+      } else {
+        targetDoc = kop.dokumen_kesehatan.find((d: any) => d.periode_laporan === filterPeriode);
+      }
+      return {
+        ...kop,
+        status_kesehatan_computed: targetDoc?.status_indikator || 'belum_ada'
+      }
+    })
+    .filter((kop: any) => {
+      const matchesSearch = kop.nama_koperasi?.toLowerCase().includes(debouncedSearch.toLowerCase())
+      const matchesKategori = filterKategori === 'semua' || kop.status_kesehatan_computed === filterKategori
+      return matchesSearch && matchesKategori
+    });
+
   return (
     <main id="main-admin-kesehatan" className="min-h-screen bg-slate-50 font-sans antialiased text-slate-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -134,25 +153,8 @@ export default function AdminKesehatan() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 bg-white">
-                {koperasiList
-                  .map((kop: any) => {
-                    let targetDoc = null;
-                    if (filterPeriode === 'semua') {
-                      targetDoc = kop.dokumen_kesehatan[0];
-                    } else {
-                      targetDoc = kop.dokumen_kesehatan.find((d: any) => d.periode_laporan === filterPeriode);
-                    }
-                    return {
-                      ...kop,
-                      status_kesehatan_computed: targetDoc?.status_indikator || 'belum_ada'
-                    }
-                  })
-                  .filter((kop: any) => {
-                    const matchesSearch = kop.nama_koperasi?.toLowerCase().includes(debouncedSearch.toLowerCase())
-                    const matchesKategori = filterKategori === 'semua' || kop.status_kesehatan_computed === filterKategori
-                    return matchesSearch && matchesKategori
-                  })
-                  .map((kop: any) => (
+                {filteredKoperasiList.length > 0 ? (
+                  filteredKoperasiList.map((kop: any) => (
                     <tr key={kop.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-4 font-semibold text-slate-900">{kop.nama_koperasi}</td>
                       <td className="px-4 py-4 text-slate-600">{kop.nomor_badan_hukum || '-'}</td>
@@ -168,27 +170,12 @@ export default function AdminKesehatan() {
                         </button>
                       </td>
                     </tr>
-                  ))}
-                {koperasiList.map((kop: any) => {
-                  let targetDoc = null;
-                  if (filterPeriode === 'semua') {
-                    targetDoc = kop.dokumen_kesehatan[0];
-                  } else {
-                    targetDoc = kop.dokumen_kesehatan.find((d: any) => d.periode_laporan === filterPeriode);
-                  }
-                  return {
-                    ...kop,
-                    status_kesehatan_computed: targetDoc?.status_indikator || 'belum_ada'
-                  }
-                }).filter((kop: any) => {
-                  const matchesSearch = kop.nama_koperasi?.toLowerCase().includes(debouncedSearch.toLowerCase())
-                  const matchesKategori = filterKategori === 'semua' || kop.status_kesehatan_computed === filterKategori
-                  return matchesSearch && matchesKategori
-                }).length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="px-4 py-8 text-center text-slate-500 italic">Tidak ada data koperasi ditemukan.</td>
-                    </tr>
-                  )}
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-8 text-center text-slate-500 italic">Tidak ada data koperasi ditemukan.</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

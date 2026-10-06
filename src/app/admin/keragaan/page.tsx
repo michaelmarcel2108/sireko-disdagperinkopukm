@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/utils/supabase'
 import NavbarAdmin from '@/components/NavbarAdmin'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
 export default function AdminKeragaan() {
   const router = useRouter()
@@ -77,21 +77,23 @@ export default function AdminKeragaan() {
   const availableYears = Array.from(new Set(allDocs.map(d => new Date(d.uploaded_at).getFullYear().toString()))).sort((a,b) => b.localeCompare(a))
 
   const processChartData = (docs: any[]) => {
-    const grouped = docs.reduce((acc: any, doc: any) => {
-      const year = new Date(doc.uploaded_at).getFullYear().toString()
+    const counts = { Bulanan: 0, Triwulan: 0, Semesteran: 0, Tahunan: 0, Lainnya: 0 }
+    docs.forEach((doc: any) => {
       let period = (doc.periode_laporan || 'Lainnya').toLowerCase()
-      if (period.includes('tri') || period.includes('trimester')) period = 'Triwulan'
-      else if (period.includes('semester')) period = 'Semesteran'
-      else if (period.includes('bulan')) period = 'Bulanan'
-      else if (period.includes('tahun')) period = 'Tahunan'
-      else period = 'Lainnya'
-      
-      if (!acc[year]) acc[year] = { year, Bulanan: 0, Triwulan: 0, Semesteran: 0, Tahunan: 0, Lainnya: 0 }
-      acc[year][period] = (acc[year][period] || 0) + 1
-      return acc
-    }, {} as any)
+      if (period.includes('tri') || period.includes('trimester')) counts.Triwulan++
+      else if (period.includes('semester')) counts.Semesteran++
+      else if (period.includes('bulan')) counts.Bulanan++
+      else if (period.includes('tahun')) counts.Tahunan++
+      else counts.Lainnya++
+    })
     
-    return Object.values(grouped).sort((a: any, b: any) => a.year.localeCompare(b.year))
+    return [
+      { name: 'Bulanan', jumlah: counts.Bulanan, fill: '#60a5fa' },
+      { name: 'Tri Semester', jumlah: counts.Triwulan, fill: '#34d399' },
+      { name: 'Semesteran', jumlah: counts.Semesteran, fill: '#fbbf24' },
+      { name: 'Tahunan', jumlah: counts.Tahunan, fill: '#a78bfa' },
+      { name: 'Lainnya', jumlah: counts.Lainnya, fill: '#94a3b8' }
+    ]
   }
 
   const filteredDocsByYear = filterTahun === 'semua' ? allDocs : allDocs.filter(d => new Date(d.uploaded_at).getFullYear().toString() === filterTahun)
@@ -107,29 +109,28 @@ export default function AdminKeragaan() {
 
         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex flex-col h-[400px]">
           <div className="mb-6">
-            <h2 className="text-lg font-bold text-slate-800">Laporan Keragaan (Seluruh Koperasi)</h2>
-            <p className="text-sm text-slate-500">Frekuensi pelaporan keragaan berdasarkan klasifikasi tahun dan periode</p>
+            <h2 className="text-lg font-bold text-slate-800">Laporan Keragaan {filterTahun !== 'semua' ? `Tahun ${filterTahun}` : '(Seluruh Waktu)'}</h2>
+            <p className="text-sm text-slate-500">Frekuensi pelaporan keragaan berdasarkan kategori periode.</p>
           </div>
           
           <div className="flex-1 w-full min-h-0">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart 
-                data={chartData.length > 0 ? chartData : [{ year: filterTahun !== 'semua' ? filterTahun : new Date().getFullYear().toString(), Bulanan: 0, Triwulan: 0, Semesteran: 0, Tahunan: 0, Lainnya: 0 }]} 
+                data={chartData} 
                 margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
               >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
                 <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
                 <Tooltip 
                   cursor={{fill: '#f8fafc'}}
                   contentStyle={{borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
                 />
-                <Legend iconType="circle" wrapperStyle={{paddingTop: '20px', fontSize: '12px'}} />
-                <Bar dataKey="Bulanan" name="Bulanan" stackId="a" fill="#60a5fa" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="Triwulan" name="Tri Semester" stackId="a" fill="#34d399" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="Semesteran" name="Semesteran" stackId="a" fill="#fbbf24" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="Tahunan" name="Tahunan" stackId="a" fill="#a78bfa" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Lainnya" name="Lainnya" stackId="a" fill="#94a3b8" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="jumlah" name="Jumlah Laporan" radius={[4, 4, 0, 0]}>
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
